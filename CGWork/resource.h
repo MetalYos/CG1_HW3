@@ -88,13 +88,25 @@
 #define ID_BUTTON_COLORS                32813
 #define ID_ACTION_SELECT                32818
 #define ID_ACTION_SELECT32819           32819
+#define ID_SHADING_PHONG                32820
+#define ID_LIGHT_SHADING_PHONG          32821
+#define ID_RENDERING_WIREFRAME          32822
+#define ID_RENDERING_SOLIDONSCREEN      32823
+#define ID_RENDERING_SOLIDTOFILE        32824
+#define ID_BUTTON_BCULLING              32826
+#define ID_BUTTON_INVERSE_N             32827
+#define ID_BUTTON_SIL                   32831
+#define ID_RENDERING_BACKGROUND         32832
+#define ID_BACKGROUND_OPEN              32833
+#define ID_BACKGROUND_STRETCH           32834
+#define ID_BACKGROUND_REPEAT            32835
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        147
-#define _APS_NEXT_COMMAND_VALUE         32820
+#define _APS_NEXT_COMMAND_VALUE         32836
 #define _APS_NEXT_CONTROL_VALUE         1058
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

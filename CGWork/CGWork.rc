@@ -59,15 +59,19 @@ BEGIN
     BUTTON      ID_AXIS_X
     BUTTON      ID_AXIS_Y
     BUTTON      ID_AXIS_Z
-    BUTTON      ID_BUTTON_BBOX
     SEPARATOR
     BUTTON      ID_BUTTON_VIEW
     BUTTON      ID_BUTTON_OBJECT
     SEPARATOR
     BUTTON      ID_BUTTON_POLY_NORM
     BUTTON      ID_BUTTON_VERT_NORM
+    BUTTON      ID_BUTTON_INVERSE_N
     SEPARATOR
     BUTTON      ID_BUTTON_COLORS
+    SEPARATOR
+    BUTTON      ID_BUTTON_BCULLING
+    BUTTON      ID_BUTTON_SIL
+    BUTTON      ID_BUTTON_BBOX
 END
 
 
@@ -121,8 +125,23 @@ BEGIN
         BEGIN
             MENUITEM "&Flat",                       ID_LIGHT_SHADING_FLAT
             MENUITEM "&Gouraud",                    ID_LIGHT_SHADING_GOURAUD
+            MENUITEM "Phong",                       ID_LIGHT_SHADING_PHONG
         END
         MENUITEM "&Parameters...",              ID_LIGHT_CONSTANTS
+    END
+    POPUP "Rendering"
+    BEGIN
+        MENUITEM "Wireframe",                   ID_RENDERING_WIREFRAME
+        MENUITEM "Solid On Screen",             ID_RENDERING_SOLIDONSCREEN
+        MENUITEM "Solid To File",               ID_RENDERING_SOLIDTOFILE
+        MENUITEM SEPARATOR
+        POPUP "Background"
+        BEGIN
+            MENUITEM "Open...",                     ID_BACKGROUND_OPEN
+            MENUITEM SEPARATOR
+            MENUITEM "Stretch",                     ID_BACKGROUND_STRETCH
+            MENUITEM "Repeat",                      ID_BACKGROUND_REPEAT
+        END
     END
     POPUP "&Help"
     BEGIN
