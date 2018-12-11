@@ -1,0 +1,11 @@
+Todo List:
+
+-----------------------TODO----------------------------------
+1. Everything!
+2. Comment the hell out of the code.
+3. Add renderer class and abstract some of the functions in CGView to it - lowest of low priorities.
+
+
+
+
+-----------------------DONE--------------------------------
