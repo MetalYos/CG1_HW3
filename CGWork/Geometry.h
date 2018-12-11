@@ -3,6 +3,7 @@
 #include "ALMath.h"
 #include <vector>
 #include <unordered_map>
+#include <set>
 
 class Vec4Hash
 {
@@ -42,14 +43,41 @@ struct Poly
 	Vec4 Normal;
 	Vec4 CalcNormal;
 	bool IsSelected;
+	// TODO: if needed, add a vector of Edges
 
 	Poly() : IsSelected(false) {}
+};
+
+struct PolyEdge
+{
+	Vertex* A;
+	Vertex* B;
+
+	std::vector<Poly*> Polys;
+};
+
+class PolyEdgeComparer
+{
+public:
+	bool operator()(const PolyEdge* u, const PolyEdge* v) const
+	{
+		bool result1 = false;
+		result1 = Vec4::Distance3(u->A->Pos, v->A->Pos) < AL_DBL_EPSILON;
+		result1 = result1 && Vec4::Distance3(u->B->Pos, v->B->Pos) < AL_DBL_EPSILON;
+
+		bool result2 = false;
+		result2 = Vec4::Distance3(u->A->Pos, v->B->Pos) < AL_DBL_EPSILON;
+		result2 = result2 && Vec4::Distance3(u->B->Pos, v->A->Pos) < AL_DBL_EPSILON;
+
+		return result1 || result2;
+	}
 };
 
 class Geometry
 {
 public:
 	std::unordered_map<Vec4, Vertex*, Vec4Hash, Vec4Comparer> Vertices;
+	std::set<PolyEdge*, PolyEdgeComparer> Edges;
 	std::vector<Poly*> Polygons;
 
 	Vec4 Color;

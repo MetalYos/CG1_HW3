@@ -15,6 +15,11 @@ Geometry::~Geometry()
 		delete (*it).second;
 	Vertices.clear();
 
+	// free edges
+	for (auto it = Edges.begin(); it != Edges.end(); ++it)
+		delete (*it);
+	Edges.clear();
+
 	// free bounding box vertices
 	while (BBox.size() > 0)
 	{
@@ -48,6 +53,27 @@ void Geometry::AddVertex(Vertex* v)
 void Geometry::AddPolygon(Poly * p)
 {
 	Polygons.push_back(p);
+	
+	// Build and add Edges
+	for (unsigned int i = 0; i < p->Vertices.size(); i++)
+	{
+		PolyEdge* edge = new PolyEdge();
+		// Save vertices in object space
+		edge->A = p->Vertices[i];
+		edge->B = p->Vertices[(i + 1) % p->Vertices.size()];
+		edge->Polys.push_back(p);
+
+		auto it = Edges.find(edge);
+		if (it != Edges.end())
+		{
+			Edges.insert(edge);
+		}
+		else
+		{
+			(*it)->Polys.push_back(p);
+			delete edge;
+		}
+	}
 }
 
 void Geometry::CalculateVerticesNormals()
