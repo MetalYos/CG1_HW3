@@ -674,8 +674,24 @@ void CCGWorkView::OnDraw(CDC* pDC)
 		pngReadFile.ReadPng();
 
 		if (isBGStretch) {
-			//todo neural network for stretching using analog fusion
+			// Scale factors
+			double cx = (double)r.Width() / (double)pngReadFile.GetWidth();
+			double cy = (double)r.Height() / (double)pngReadFile.GetHeight();
+			
+			for (unsigned int x = 0; x < r.Width(); x++) {
+				for (unsigned y = 0; y < r.Height(); y++) {
+					// Calculate position in image
+					double v = x / cx;
+					double w = y / cy;
 
+					// Pick the nearest neighbor to (v,w)
+					int c = pngReadFile.GetValue((int)round(v), (int)round(w));
+					int r = GET_R(c);
+					int g = GET_G(c);
+					int b = GET_B(c);
+					pDCToUse->SetPixel(x, y, RGB(r, g, b));
+				}
+			}
 		}
 		else {
 			for (unsigned int x = 0; x < r.Width(); x++) {
@@ -689,7 +705,6 @@ void CCGWorkView::OnDraw(CDC* pDC)
 					pDCToUse->SetPixel(x, y, RGB(r, g, b));
 				}
 			}
-
 		}
 	}
 	else {

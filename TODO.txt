@@ -11,7 +11,6 @@ Untill
 5. Calculate color according to lights and shading.
 6. Save to file.
 7. Normal inverse.
-8. Background.
 9. Backface culling.
 10. Silhouette highlighting:
 11.. Comment the hell out of the code.
@@ -19,3 +18,4 @@ Untill
 
 -----------------------DONE--------------------------------
 1. Solid fill rendering.
+8. Background.
