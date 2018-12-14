@@ -3,7 +3,7 @@
 #include "ALMath.h"
 #include <vector>
 #include <unordered_map>
-#include <set>
+#include <unordered_set>
 
 class Vec4Hash
 {
@@ -61,6 +61,7 @@ class PolyEdgeComparer
 public:
 	bool operator()(const PolyEdge* u, const PolyEdge* v) const
 	{
+		/*/
 		bool result1 = false;
 		result1 = Vec4::Distance3(u->A->Pos, v->A->Pos) < AL_DBL_EPSILON;
 		result1 = result1 && Vec4::Distance3(u->B->Pos, v->B->Pos) < AL_DBL_EPSILON;
@@ -70,6 +71,19 @@ public:
 		result2 = result2 && Vec4::Distance3(u->B->Pos, v->A->Pos) < AL_DBL_EPSILON;
 
 		return result1 || result2;
+		*/
+
+		return ((u->A == v->A) && (u->B == v->B)) || ((u->A == v->B) && (u->B == v->A));
+	}
+};
+
+class PolyEdgeHash
+{
+public:
+	std::size_t operator()(const PolyEdge* e) const
+	{
+		std::hash<double> hashVal;
+		return hashVal(e->A[0].Pos[0]);
 	}
 };
 
@@ -77,7 +91,7 @@ class Geometry
 {
 public:
 	std::unordered_map<Vec4, Vertex*, Vec4Hash, Vec4Comparer> Vertices;
-	std::set<PolyEdge*, PolyEdgeComparer> Edges;
+	std::unordered_set<PolyEdge*, PolyEdgeHash, PolyEdgeComparer> Edges;
 	std::vector<Poly*> Polygons;
 
 	Vec4 Color;

@@ -82,6 +82,15 @@ private:
 	bool showGeos;
 	bool aroundEye;
 
+	// Poly fill selection parameter
+	enum PolyFillSelection
+	{
+		WIREFRAME,
+		SOLID_SCREEN,
+		SOLID_FILE
+	};
+	PolyFillSelection currentPolySelection;
+
 	// Quick hack
 	std::vector< std::vector<Edge> > selectedPolys;
 
@@ -115,6 +124,7 @@ public:
 	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
 	void DrawLine(CDC* pDC, COLORREF color, CPoint a, CPoint b);
 	void DrawPoly(CDC* pDc, std::vector<Edge>);
+	void ScanConvert(CDC* pDc, std::vector<Edge> poly, COLORREF color);
 	protected:
 	//}}AFX_VIRTUAL
 
@@ -198,6 +208,12 @@ public:
 	afx_msg void OnActionSelect();
 	afx_msg void OnUpdateActionSelect(CCmdUI *pCmdUI);
 	afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
+	afx_msg void OnRenderingWireframe();
+	afx_msg void OnUpdateRenderingWireframe(CCmdUI *pCmdUI);
+	afx_msg void OnRenderingSolidonscreen();
+	afx_msg void OnUpdateRenderingSolidonscreen(CCmdUI *pCmdUI);
+	afx_msg void OnRenderingSolidtofile();
+	afx_msg void OnUpdateRenderingSolidtofile(CCmdUI *pCmdUI);
 };
 
 #ifndef _DEBUG  // debug version in CGWorkView.cpp

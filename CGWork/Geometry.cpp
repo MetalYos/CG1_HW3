@@ -64,7 +64,7 @@ void Geometry::AddPolygon(Poly * p)
 		edge->Polys.push_back(p);
 
 		auto it = Edges.find(edge);
-		if (it != Edges.end())
+		if (it == Edges.end())
 		{
 			Edges.insert(edge);
 		}

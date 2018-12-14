@@ -23,6 +23,7 @@ static char THIS_FILE[] = __FILE__;
 #include "iritSkel.h"
 
 #include <assert.h>
+#include <algorithm>
 #include "Scene.h"
 
 // For Status Bar access
@@ -90,6 +91,12 @@ BEGIN_MESSAGE_MAP(CCGWorkView, CView)
 	ON_COMMAND(ID_ACTION_SELECT, &CCGWorkView::OnActionSelect)
 	ON_UPDATE_COMMAND_UI(ID_ACTION_SELECT, &CCGWorkView::OnUpdateActionSelect)
 	ON_WM_KEYDOWN()
+	ON_COMMAND(ID_RENDERING_WIREFRAME, &CCGWorkView::OnRenderingWireframe)
+	ON_UPDATE_COMMAND_UI(ID_RENDERING_WIREFRAME, &CCGWorkView::OnUpdateRenderingWireframe)
+	ON_COMMAND(ID_RENDERING_SOLIDONSCREEN, &CCGWorkView::OnRenderingSolidonscreen)
+	ON_UPDATE_COMMAND_UI(ID_RENDERING_SOLIDONSCREEN, &CCGWorkView::OnUpdateRenderingSolidonscreen)
+	ON_COMMAND(ID_RENDERING_SOLIDTOFILE, &CCGWorkView::OnRenderingSolidtofile)
+	ON_UPDATE_COMMAND_UI(ID_RENDERING_SOLIDTOFILE, &CCGWorkView::OnUpdateRenderingSolidtofile)
 END_MESSAGE_MAP()
 
 // A patch to fix GLaux disappearance from VS2005 to VS2008
@@ -135,6 +142,7 @@ CCGWorkView::CCGWorkView()
 	normalSizeFactor = 0.1;
 	showGeos = true;
 	aroundEye = true;
+	currentPolySelection = WIREFRAME;
 }
 
 CCGWorkView::~CCGWorkView()
@@ -213,6 +221,137 @@ void CCGWorkView::DrawPoly(CDC * pDc, std::vector<Edge> edges)
 {
 	for (Edge e : edges) {
 		DrawLine(pDc, e.color, e.a, e.b);
+	}
+}
+
+class EdgeSorterY
+{
+public:
+	bool operator()(const Edge& e1, const Edge& e2)
+	{
+		return (((e1.a.y < e2.a.y) && (e1.a.y < e2.b.y)) ||
+			((e1.b.y < e2.a.y) && (e1.b.y < e2.b.y)));
+	}
+};
+
+class EdgeComparer
+{
+public:
+	bool operator()(const Edge& e1, const Edge& e2)
+	{
+		return ((e1.a == e2.a) && (e1.b == e2.b));
+	}
+};
+
+void CCGWorkView::ScanConvert(CDC* pDc, std::vector<Edge> poly, COLORREF color)
+{
+	assert(poly.size() > 2);
+
+	// Sort edges according to the ymin value
+	EdgeSorterY sorter;
+	std::sort(poly.begin(), poly.end(), sorter);
+	
+	std::vector<Edge> activeList;
+
+	// find ymax of edges in poly
+	int ymax = poly[0].a.y;
+	for (unsigned int i = 0; i < poly.size(); i++)
+	{
+		if (ymax <= poly[i].a.y)
+			ymax = poly[i].a.y;
+		if (ymax <= poly[i].b.y)
+			ymax = poly[i].b.y;
+	}
+	
+	int ymin = min(poly[0].a.y, poly[0].b.y);
+	// Iterate over scan lines from ymin to ymax
+	for (int y = ymin; y <= ymax; y++)
+	{
+		// Iterate over the edges in Poly
+		//for (unsigned int i = 0; i < poly.size(); i++)
+		for (auto it = poly.begin(); it != poly.end(); ++it)
+		{
+			Edge polyEdge = *it;
+			int edgeYMin = (polyEdge.a.y < polyEdge.b.y) ? polyEdge.a.y : polyEdge.b.y;
+			int edgeYMax = (polyEdge.a.y < polyEdge.b.y) ? polyEdge.b.y : polyEdge.a.y;
+
+			if (activeList.size() == 0 && edgeYMin <= y)
+			{
+				activeList.push_back(polyEdge);
+				continue;
+			}
+
+			// Iterate over the edges in active list
+			int size = activeList.size();
+			for (unsigned int i = 0; i < activeList.size(); i++)
+			{
+				// If the poly edge is not in the active list and it's ymin is smaller
+				// than the scanline, add it to the active list
+				if ((polyEdge.a != activeList[i].a) || (polyEdge.b != activeList[i].b))
+				{
+					if (edgeYMin <= y)
+					{
+						activeList.push_back(polyEdge);
+						break;
+					}
+				}
+				else
+					break;
+			}
+			for (unsigned int i = 0; i < activeList.size(); i++)
+			{
+				// If the poly edge is in the active list and it's ymax is smaller
+				// than the scanline, remove it from the active list
+				if (((polyEdge.a == activeList[i].a) && (polyEdge.b == activeList[i].b)) &&
+					(edgeYMax < y))
+				{
+					activeList.erase(activeList.begin() + i);
+				}
+			}
+		}
+
+		EdgeComparer eComp;
+		auto it = std::unique(activeList.begin(), activeList.end(), eComp);
+		activeList.resize(std::distance(activeList.begin(), it));
+
+		// Calculate points of intersections of A members with line Y = y
+		std::vector<int> intersections;
+		for (Edge e : activeList)
+		{
+			int dy = e.b.y - e.a.y;
+			if (dy == 0)
+				continue;
+			int dx = e.b.x - e.a.x;
+
+			int x = floor((y * dx + (e.a.x * e.b.y - e.b.x * e.a.y)) / dy);
+			intersections.push_back(x);
+		}
+
+		// Sort intersections by decreasing x values
+		std::sort(intersections.begin(), intersections.end());
+		
+		auto it2 = std::unique(intersections.begin(), intersections.end());
+		intersections.resize(std::distance(intersections.begin(), it2));
+		
+		if (intersections.size() == 1)
+		{
+			// Draw pixel
+		}
+		for (unsigned int i = 0; i < intersections.size(); i += 2)
+		{
+			// Draw line according to shading and zbuffer
+			int x0 = intersections[i];
+			if ((i + 1) >= intersections.size())
+				break;
+			int x1 = intersections[i + 1];
+
+			int x = x0;
+			while (x <= x1)
+			{
+				pDc->SetPixel(x, y, color);
+				x++;
+			}
+		}
 	}
 }
 
@@ -520,16 +659,6 @@ void CCGWorkView::OnDraw(CDC* pDC)
 
 	COLORREF bGColorRef = m_colorDialog.BackgroundColor;
 	pDCToUse->FillSolidRect(&r, bGColorRef);
-
-	/* TOO SLOW! used FillSolidRect instead
-	for (int x = r.left; x < r.right; x++)
-	{
-		for (int y = r.top; y < r.bottom; y++)
-		{
-			pDCToUse->SetPixel(x, y, bGColorRef);
-		}
-	}
-	*/
 	
 	std::vector<Model*> models = Scene::GetInstance().GetModels();
 	Camera* camera = Scene::GetInstance().GetCamera();
@@ -624,7 +753,12 @@ void CCGWorkView::OnDraw(CDC* pDC)
 				if (p->IsSelected)
 					selectedPolys.push_back(poly);
 
-				DrawPoly(pDCToUse, poly);
+				if (currentPolySelection == WIREFRAME)
+					DrawPoly(pDCToUse, poly);
+				else if (currentPolySelection == SOLID_SCREEN)
+					ScanConvert(pDCToUse, poly, color);
+				else
+					ScanConvert(pDCToUse, poly, color);
 
 				// Draw poly normal if needed
 				if (Scene::GetInstance().ArePolyNormalsOn())
@@ -1271,4 +1405,43 @@ void CCGWorkView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		aroundEye = !aroundEye;
 
 	CView::OnKeyDown(nChar, nRepCnt, nFlags);
+}
+
+
+void CCGWorkView::OnRenderingWireframe()
+{
+	currentPolySelection = WIREFRAME;
+	Invalidate();
+}
+
+
+void CCGWorkView::OnUpdateRenderingWireframe(CCmdUI *pCmdUI)
+{
+	pCmdUI->SetCheck(currentPolySelection == WIREFRAME);
+}
+
+
+void CCGWorkView::OnRenderingSolidonscreen()
+{
+	currentPolySelection = SOLID_SCREEN;
+	Invalidate();
+}
+
+
+void CCGWorkView::OnUpdateRenderingSolidonscreen(CCmdUI *pCmdUI)
+{
+	pCmdUI->SetCheck(currentPolySelection == SOLID_SCREEN);
+}
+
+
+void CCGWorkView::OnRenderingSolidtofile()
+{
+	currentPolySelection = SOLID_FILE;
+	Invalidate();
+}
+
+
+void CCGWorkView::OnUpdateRenderingSolidtofile(CCmdUI *pCmdUI)
+{
+	pCmdUI->SetCheck(currentPolySelection == SOLID_FILE);
 }

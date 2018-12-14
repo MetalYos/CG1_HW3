@@ -50,6 +50,8 @@ public:
 	Vec4 operator /(double c) const;
 	Vec4& operator /=(double c);
 
+	bool operator ==(const Vec4& v) const;
+
 	// Subscript operator overloading
 	const double& operator [](int i) const;
 	double& operator [](int i);

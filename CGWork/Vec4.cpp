@@ -128,6 +128,12 @@ Vec4 & Vec4::operator/=(double c)
 	return (*this = *this / c);
 }
 
+bool Vec4::operator==(const Vec4 & v) const
+{
+	double sum = (data[0] - v.data[0]) + (data[1] - v.data[1]) + (data[2] - v.data[2]);
+	return (sum < AL_DBL_EPSILON);
+}
+
 const double & Vec4::operator[](int i) const
 {
 	assert(i >= 0 && i < 4);
