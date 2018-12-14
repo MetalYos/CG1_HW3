@@ -91,7 +91,11 @@ private:
 	double normalSizeFactor;
 	bool showGeos;
 	bool aroundEye;
+
+	//Background 
 	bool isBGStretch;
+	bool isBGFileOpen;
+	CString BGFile;
 
 	// Poly fill selection parameter
 	enum PolyFillSelection
@@ -225,6 +229,11 @@ public:
 	afx_msg void OnUpdateRenderingSolidonscreen(CCmdUI *pCmdUI);
 	afx_msg void OnRenderingSolidtofile();
 	afx_msg void OnUpdateRenderingSolidtofile(CCmdUI *pCmdUI);
+	afx_msg void OnBackgroundStretch();
+	afx_msg void OnUpdateBackgroundStretch(CCmdUI *pCmdUI);
+	afx_msg void OnBackgroundRepeat();
+	afx_msg void OnUpdateBackgroundRepeat(CCmdUI *pCmdUI);
+	afx_msg void OnBackgroundOpen();
 };
 
 #ifndef _DEBUG  // debug version in CGWorkView.cpp

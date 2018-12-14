@@ -98,6 +98,11 @@ BEGIN_MESSAGE_MAP(CCGWorkView, CView)
 	ON_UPDATE_COMMAND_UI(ID_RENDERING_SOLIDONSCREEN, &CCGWorkView::OnUpdateRenderingSolidonscreen)
 	ON_COMMAND(ID_RENDERING_SOLIDTOFILE, &CCGWorkView::OnRenderingSolidtofile)
 	ON_UPDATE_COMMAND_UI(ID_RENDERING_SOLIDTOFILE, &CCGWorkView::OnUpdateRenderingSolidtofile)
+	ON_COMMAND(ID_BACKGROUND_STRETCH, &CCGWorkView::OnBackgroundStretch)
+	ON_UPDATE_COMMAND_UI(ID_BACKGROUND_STRETCH, &CCGWorkView::OnUpdateBackgroundStretch)
+	ON_COMMAND(ID_BACKGROUND_REPEAT, &CCGWorkView::OnBackgroundRepeat)
+	ON_UPDATE_COMMAND_UI(ID_BACKGROUND_REPEAT, &CCGWorkView::OnUpdateBackgroundRepeat)
+	ON_COMMAND(ID_BACKGROUND_OPEN, &CCGWorkView::OnBackgroundOpen)
 END_MESSAGE_MAP()
 
 // A patch to fix GLaux disappearance from VS2005 to VS2008
@@ -145,6 +150,7 @@ CCGWorkView::CCGWorkView()
 	aroundEye = true;
 	currentPolySelection = WIREFRAME;
 	isBGStretch = false;
+	isBGFileOpen = false;
 }
 
 CCGWorkView::~CCGWorkView()
@@ -661,9 +667,11 @@ void CCGWorkView::OnDraw(CDC* pDC)
 
 	//TODO BACKGROUND DRAWING
 	//todo flag isIMageLoaded
-	if (currentPolySelection != WIREFRAME) {
+	if (currentPolySelection != WIREFRAME && isBGFileOpen) {
 
-		PngWrapper pngReadFile("Culkin3.png");
+		char* BG = (char*)(LPCTSTR)&BGFile;
+
+		PngWrapper pngReadFile((const char* )(BGFile.GetString()));
 		pngReadFile.ReadPng();
 
 		if (isBGStretch) {
@@ -1477,4 +1485,44 @@ void CCGWorkView::OnRenderingSolidtofile()
 void CCGWorkView::OnUpdateRenderingSolidtofile(CCmdUI *pCmdUI)
 {
 	pCmdUI->SetCheck(currentPolySelection == SOLID_FILE);
+}
+
+
+void CCGWorkView::OnBackgroundStretch()
+{
+	isBGStretch = true;
+	Invalidate();
+}
+
+
+void CCGWorkView::OnUpdateBackgroundStretch(CCmdUI *pCmdUI)
+{
+	pCmdUI->SetCheck(isBGStretch);
+}
+
+
+void CCGWorkView::OnBackgroundRepeat()
+{
+	isBGStretch = false;
+	Invalidate();
+}
+
+
+void CCGWorkView::OnUpdateBackgroundRepeat(CCmdUI *pCmdUI)
+{
+	pCmdUI->SetCheck(!isBGStretch);
+}
+
+
+void CCGWorkView::OnBackgroundOpen()
+{
+	TCHAR szFilters[] = _T("PNG Image Files (*.png)");
+
+	CFileDialog dlg(TRUE, _T("png"), _T("*.png"), OFN_FILEMUSTEXIST | OFN_HIDEREADONLY, szFilters);
+
+	if (dlg.DoModal() == IDOK) {
+		BGFile = dlg.GetPathName();
+		isBGFileOpen = true; 
+	}
+
 }
