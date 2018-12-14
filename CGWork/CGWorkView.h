@@ -91,6 +91,7 @@ private:
 	double normalSizeFactor;
 	bool showGeos;
 	bool aroundEye;
+	bool isBGStretch;
 
 	// Poly fill selection parameter
 	enum PolyFillSelection

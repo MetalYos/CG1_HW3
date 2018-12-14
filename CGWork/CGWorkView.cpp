@@ -26,6 +26,7 @@ static char THIS_FILE[] = __FILE__;
 #include <algorithm>
 #include "Scene.h"
 
+#include "PngWrapper.h"
 // For Status Bar access
 #include "MainFrm.h"
 
@@ -143,6 +144,7 @@ CCGWorkView::CCGWorkView()
 	showGeos = true;
 	aroundEye = true;
 	currentPolySelection = WIREFRAME;
+	isBGStretch = false;
 }
 
 CCGWorkView::~CCGWorkView()
@@ -657,8 +659,39 @@ void CCGWorkView::OnDraw(CDC* pDC)
 		isFirstDraw = false;
 	}
 
-	COLORREF bGColorRef = m_colorDialog.BackgroundColor;
-	pDCToUse->FillSolidRect(&r, bGColorRef);
+	//TODO BACKGROUND DRAWING
+	//todo flag isIMageLoaded
+	if (currentPolySelection != WIREFRAME) {
+
+		PngWrapper pngReadFile("Culkin3.png");
+		pngReadFile.ReadPng();
+
+		if (isBGStretch) {
+			//todo neural network for stretching using analog fusion
+
+		}
+		else {
+			for (unsigned int x = 0; x < r.Width(); x++) {
+				for (unsigned y = 0; y < r.Height(); y++) {
+					//TODO check for grayscale
+					int c = pngReadFile.GetValue(x % pngReadFile.GetWidth(), y % pngReadFile.GetHeight());
+					int r = GET_R(c);
+					int g = GET_G(c);
+					int b = GET_B(c);
+
+					pDCToUse->SetPixel(x, y, RGB(r, g, b));
+				}
+			}
+
+		}
+		
+	}
+	else {
+		COLORREF bGColorRef = m_colorDialog.BackgroundColor;
+		pDCToUse->FillSolidRect(&r, bGColorRef);
+	}
+	
+
 	
 	std::vector<Model*> models = Scene::GetInstance().GetModels();
 	Camera* camera = Scene::GetInstance().GetCamera();
