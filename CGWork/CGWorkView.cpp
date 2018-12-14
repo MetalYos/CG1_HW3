@@ -669,9 +669,8 @@ void CCGWorkView::OnDraw(CDC* pDC)
 	//todo flag isIMageLoaded
 	if (currentPolySelection != WIREFRAME && isBGFileOpen) {
 
-		char* BG = (char*)(LPCTSTR)&BGFile;
-
-		PngWrapper pngReadFile((const char* )(BGFile.GetString()));
+		CT2A BG(BGFile);
+		PngWrapper pngReadFile(BG);
 		pngReadFile.ReadPng();
 
 		if (isBGStretch) {
@@ -692,14 +691,12 @@ void CCGWorkView::OnDraw(CDC* pDC)
 			}
 
 		}
-		
 	}
 	else {
 		COLORREF bGColorRef = m_colorDialog.BackgroundColor;
 		pDCToUse->FillSolidRect(&r, bGColorRef);
 	}
 	
-
 	
 	std::vector<Model*> models = Scene::GetInstance().GetModels();
 	Camera* camera = Scene::GetInstance().GetCamera();
