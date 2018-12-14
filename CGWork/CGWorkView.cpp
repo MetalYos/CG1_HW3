@@ -323,7 +323,7 @@ void CCGWorkView::ScanConvert(CDC* pDc, std::vector<Edge> poly, COLORREF color)
 				continue;
 			int dx = e.b.x - e.a.x;
 
-			int x = floor((y * dx + (e.a.x * e.b.y - e.b.x * e.a.y)) / dy);
+			int x = (int)floor((y * dx + (e.a.x * e.b.y - e.b.x * e.a.y)) / dy);
 			intersections.push_back(x);
 		}
 

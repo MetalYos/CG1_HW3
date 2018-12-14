@@ -25,8 +25,18 @@
 #include "Vec4.h"
 #include "Geometry.h"
 
+struct DVertex
+{
+	int X;
+	int Y;
+	double Z;
+	Vec4 Color;
+	Vec4 Normal;
+};
+
 struct Edge {
 	CPoint a, b;
+	//Vertex A, B;
 	COLORREF color;
 };
 
