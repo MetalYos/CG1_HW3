@@ -31,35 +31,41 @@ typedef  enum
 class LightParams
 {
 public:
-
     //light enabled
-    bool enabled;
+    bool Enabled;
     //type directional,point,spot
-    LightType type;
+    LightType Type;
     //local or view space
-    LightSpace space;
+    LightSpace Space;
 
     //color 0-255 RGB
-    int colorR;
-    int colorG;
-    int colorB;
+    int ColorR;
+    int ColorG;
+    int ColorB;
 
     //position
-    double posX;
-    double posY;
-    double posZ;
+    double PosX;
+    double PosY;
+    double PosZ;
 
     //direction
-    double dirX;
-    double dirY;
-    double dirZ;
+    double DirX;
+    double DirY;
+    double DirZ;
     
     LightParams():
-	enabled(false),type(LIGHT_TYPE_DIRECTIONAL),space(LIGHT_SPACE_VIEW),
-	colorR(255),colorG(255),colorB(255),posX(0),posY(0),posZ(0),
-	dirX(0),dirY(0),dirZ(0)
+	Enabled(false), Type(LIGHT_TYPE_DIRECTIONAL), Space(LIGHT_SPACE_VIEW),
+	ColorR(255), ColorG(255), ColorB(255), PosX(0), PosY(0), PosZ(0),
+	DirX(0), DirY(0), DirZ(0)
     {}
 
 protected:
 private:
+};
+
+class Light
+{
+public:
+	Light();
+	~Light();
 };

@@ -246,6 +246,7 @@
     <ClInclude Include="LightDialog.h" />
     <ClInclude Include="MainFrm.h" />
     <ClInclude Include="Mat4.h" />
+    <ClInclude Include="Material.h" />
     <ClInclude Include="MaterialDlg.h" />
     <ClInclude Include="Model.h" />
     <ClInclude Include="PngWrapper.h" />

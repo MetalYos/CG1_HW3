@@ -36,18 +36,27 @@
 #define IDC_LIGHT_DIR_Z                 1037
 #define IDC_LIGHT_TYPE                  1038
 #define IDC_MATERIAL_AMBIENT            1039
+#define IDC_MATERIAL_AMBIENT_R          1039
 #define IDC_MATERIAL_DIFFUSE            1040
 #define IDC_WIREFRAME_COLOR_BUTTON      1040
+#define IDC_MATERIAL_AMBIENT_B          1040
 #define IDC_MATERIAL_SHININESS          1041
 #define IDC_NORMAL_COLOR_BUTTON         1041
+#define IDC_MATERIAL_SHININESS_R        1041
 #define IDC_MATERIAL_SPECULAR           1042
 #define IDC_BACKGROUND_COLOR_BUTTON     1042
 #define IDC_DISCO_MODE_CHECK            1043
+#define IDC_MATERIAL_AMBIENT_G          1043
 #define IDC_IS_DISCO_CHECKBOX           1044
+#define IDC_MATERIAL_DIFFUSE_R          1044
 #define IDC_EDIT_NEAR                   1045
+#define IDC_MATERIAL_DIFFUSE_G          1045
 #define IDC_EDIT2                       1046
 #define IDC_EDIT_FOV                    1046
+#define IDC_MATERIAL_DIFFUSE_B          1046
 #define IDC_EDIT_FAR                    1047
+#define IDC_MATERIAL_SHININESS_G        1047
+#define IDC_MATERIAL_SHININESS_B        1048
 #define IDC_EDIT_TESS                   1056
 #define IDC_EDIT_ROT                    1057
 #define IDC_EDIT_TRANS                  1058
@@ -100,13 +109,14 @@
 #define ID_BACKGROUND_OPEN              32833
 #define ID_BACKGROUND_STRETCH           32834
 #define ID_BACKGROUND_REPEAT            32835
+#define ID_LIGHT_SETMATERIAL            32836
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        147
-#define _APS_NEXT_COMMAND_VALUE         32836
+#define _APS_NEXT_RESOURCE_VALUE        148
+#define _APS_NEXT_COMMAND_VALUE         32837
 #define _APS_NEXT_CONTROL_VALUE         1058
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

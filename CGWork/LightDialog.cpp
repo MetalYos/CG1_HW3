@@ -25,22 +25,22 @@ void CLightDialog::DoDataExchange(CDataExchange* pDX)
 	CDialog::DoDataExchange(pDX);
 
 	//ambient light
-	DDX_Text(pDX, IDC_AMBL_COLOR_R, m_ambiant.colorR);
-	DDX_Text(pDX, IDC_AMBL_COLOR_G, m_ambiant.colorG);
-	DDX_Text(pDX, IDC_AMBL_COLOR_B, m_ambiant.colorB);
+	DDX_Text(pDX, IDC_AMBL_COLOR_R, m_ambiant.ColorR);
+	DDX_Text(pDX, IDC_AMBL_COLOR_G, m_ambiant.ColorG);
+	DDX_Text(pDX, IDC_AMBL_COLOR_B, m_ambiant.ColorB);
 
 	//update light parameters for the currently selected light
-	DDX_Text(pDX, IDC_LIGHT_COLOR_R, m_lights[m_currentLightIdx].colorR);
-	DDX_Text(pDX, IDC_LIGHT_COLOR_G, m_lights[m_currentLightIdx].colorG);
-	DDX_Text(pDX, IDC_LIGHT_COLOR_B, m_lights[m_currentLightIdx].colorB);
+	DDX_Text(pDX, IDC_LIGHT_COLOR_R, m_lights[m_currentLightIdx].ColorR);
+	DDX_Text(pDX, IDC_LIGHT_COLOR_G, m_lights[m_currentLightIdx].ColorG);
+	DDX_Text(pDX, IDC_LIGHT_COLOR_B, m_lights[m_currentLightIdx].ColorB);
 
-	DDX_Text(pDX, IDC_LIGHT_POS_X, m_lights[m_currentLightIdx].posX);
-	DDX_Text(pDX, IDC_LIGHT_POS_Y, m_lights[m_currentLightIdx].posY);
-	DDX_Text(pDX, IDC_LIGHT_POS_Z, m_lights[m_currentLightIdx].posZ);
+	DDX_Text(pDX, IDC_LIGHT_POS_X, m_lights[m_currentLightIdx].PosX);
+	DDX_Text(pDX, IDC_LIGHT_POS_Y, m_lights[m_currentLightIdx].PosY);
+	DDX_Text(pDX, IDC_LIGHT_POS_Z, m_lights[m_currentLightIdx].PosZ);
 
-	DDX_Text(pDX, IDC_LIGHT_DIR_X, m_lights[m_currentLightIdx].dirX);
-	DDX_Text(pDX, IDC_LIGHT_DIR_Y, m_lights[m_currentLightIdx].dirY);
-	DDX_Text(pDX, IDC_LIGHT_DIR_Z, m_lights[m_currentLightIdx].dirZ);
+	DDX_Text(pDX, IDC_LIGHT_DIR_X, m_lights[m_currentLightIdx].DirX);
+	DDX_Text(pDX, IDC_LIGHT_DIR_Y, m_lights[m_currentLightIdx].DirY);
+	DDX_Text(pDX, IDC_LIGHT_DIR_Z, m_lights[m_currentLightIdx].DirZ);
 
 	//NOTE:Add more dialog controls which are associated with the structure below this line		
 	//...
@@ -48,17 +48,17 @@ void CLightDialog::DoDataExchange(CDataExchange* pDX)
 	//the following class members can't be updated directly through DDX
 	//using a helper variable for type-casting to solve the compilation error
 
-	int helper=m_lights[m_currentLightIdx].enabled;
+	int helper=m_lights[m_currentLightIdx].Enabled;
 	DDX_Check(pDX,IDC_LIGHT_ENABLED,helper);
-	m_lights[m_currentLightIdx].enabled = (bool)helper;
+	m_lights[m_currentLightIdx].Enabled = (bool)helper;
 
-	helper = m_lights[m_currentLightIdx].type;
+	helper = m_lights[m_currentLightIdx].Type;
 	DDX_CBIndex(pDX,IDC_LIGHT_TYPE,helper);
-	m_lights[m_currentLightIdx].type = (LightType)helper;
+	m_lights[m_currentLightIdx].Type = (LightType)helper;
 
-	helper = m_lights[m_currentLightIdx].space;
+	helper = m_lights[m_currentLightIdx].Space;
 	DDX_CBIndex(pDX,IDC_LIGHT_SPACE,helper);
-	m_lights[m_currentLightIdx].space = (LightSpace)helper;
+	m_lights[m_currentLightIdx].Space = (LightSpace)helper;
 
 }
 

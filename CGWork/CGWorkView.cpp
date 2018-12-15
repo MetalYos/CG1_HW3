@@ -103,6 +103,7 @@ BEGIN_MESSAGE_MAP(CCGWorkView, CView)
 	ON_COMMAND(ID_BACKGROUND_REPEAT, &CCGWorkView::OnBackgroundRepeat)
 	ON_UPDATE_COMMAND_UI(ID_BACKGROUND_REPEAT, &CCGWorkView::OnUpdateBackgroundRepeat)
 	ON_COMMAND(ID_BACKGROUND_OPEN, &CCGWorkView::OnBackgroundOpen)
+	ON_COMMAND(ID_LIGHT_SETMATERIAL, &CCGWorkView::OnLightSetmaterial)
 END_MESSAGE_MAP()
 
 // A patch to fix GLaux disappearance from VS2005 to VS2008
@@ -134,9 +135,12 @@ CCGWorkView::CCGWorkView()
 	m_nMaterialCosineFactor = 32;
 
 	//init the first light to be enabled
-	m_lights[LIGHT_ID_1].enabled=true;
+	m_lights[LIGHT_ID_1].Enabled = true;
 	m_pDbBitMap = NULL;
 	m_pDbDC = NULL;
+
+	// Init zBuffer
+	zBuffer = NULL;
 
 	isFirstDraw = true;
 	isBBoxOn = false;
@@ -228,7 +232,7 @@ void CCGWorkView::DrawLine(CDC * pDC, COLORREF color, CPoint a, CPoint b)
 void CCGWorkView::DrawPoly(CDC * pDc, std::vector<Edge> edges)
 {
 	for (Edge e : edges) {
-		DrawLine(pDc, e.color, e.a, e.b);
+		DrawLine(pDc, e.color, e.A.Pixel, e.B.Pixel);
 	}
 }
 
@@ -237,8 +241,8 @@ class EdgeSorterY
 public:
 	bool operator()(const Edge& e1, const Edge& e2)
 	{
-		return (((e1.a.y < e2.a.y) && (e1.a.y < e2.b.y)) ||
-			((e1.b.y < e2.a.y) && (e1.b.y < e2.b.y)));
+		return (((e1.A.Pixel.y < e2.A.Pixel.y) && (e1.A.Pixel.y < e2.B.Pixel.y)) ||
+			((e1.B.Pixel.y < e2.A.Pixel.y) && (e1.B.Pixel.y < e2.B.Pixel.y)));
 	}
 };
 
@@ -247,7 +251,7 @@ class EdgeComparer
 public:
 	bool operator()(const Edge& e1, const Edge& e2)
 	{
-		return ((e1.a == e2.a) && (e1.b == e2.b));
+		return ((e1.A.Pixel == e2.A.Pixel) && (e1.B.Pixel == e2.B.Pixel));
 	}
 };
 
@@ -262,16 +266,16 @@ void CCGWorkView::ScanConvert(CDC* pDc, std::vector<Edge> poly, COLORREF color)
 	std::vector<Edge> activeList;
 
 	// find ymax of edges in poly
-	int ymax = poly[0].a.y;
+	int ymax = poly[0].A.Pixel.y;
 	for (unsigned int i = 0; i < poly.size(); i++)
 	{
-		if (ymax <= poly[i].a.y)
-			ymax = poly[i].a.y;
-		if (ymax <= poly[i].b.y)
-			ymax = poly[i].b.y;
+		if (ymax <= poly[i].A.Pixel.y)
+			ymax = poly[i].A.Pixel.y;
+		if (ymax <= poly[i].B.Pixel.y)
+			ymax = poly[i].B.Pixel.y;
 	}
 	
-	int ymin = min(poly[0].a.y, poly[0].b.y);
+	int ymin = min(poly[0].A.Pixel.y, poly[0].B.Pixel.y);
 	// Iterate over scan lines from ymin to ymax
 	for (int y = ymin; y <= ymax; y++)
 	{
@@ -280,8 +284,8 @@ void CCGWorkView::ScanConvert(CDC* pDc, std::vector<Edge> poly, COLORREF color)
 		for (auto it = poly.begin(); it != poly.end(); ++it)
 		{
 			Edge polyEdge = *it;
-			int edgeYMin = (polyEdge.a.y < polyEdge.b.y) ? polyEdge.a.y : polyEdge.b.y;
-			int edgeYMax = (polyEdge.a.y < polyEdge.b.y) ? polyEdge.b.y : polyEdge.a.y;
+			int edgeYMin = (polyEdge.A.Pixel.y < polyEdge.B.Pixel.y) ? polyEdge.A.Pixel.y : polyEdge.B.Pixel.y;
+			int edgeYMax = (polyEdge.A.Pixel.y < polyEdge.B.Pixel.y) ? polyEdge.B.Pixel.y : polyEdge.A.Pixel.y;
 
 			if (activeList.size() == 0 && edgeYMin <= y)
 			{
@@ -295,7 +299,7 @@ void CCGWorkView::ScanConvert(CDC* pDc, std::vector<Edge> poly, COLORREF color)
 			{
 				// If the poly edge is not in the active list and it's ymin is smaller
 				// than the scanline, add it to the active list
-				if ((polyEdge.a != activeList[i].a) || (polyEdge.b != activeList[i].b))
+				if ((polyEdge.A.Pixel != activeList[i].A.Pixel) || (polyEdge.B.Pixel != activeList[i].B.Pixel))
 				{
 					if (edgeYMin <= y)
 					{
@@ -310,7 +314,7 @@ void CCGWorkView::ScanConvert(CDC* pDc, std::vector<Edge> poly, COLORREF color)
 			{
 				// If the poly edge is in the active list and it's ymax is smaller
 				// than the scanline, remove it from the active list
-				if (((polyEdge.a == activeList[i].a) && (polyEdge.b == activeList[i].b)) &&
+				if (((polyEdge.A.Pixel == activeList[i].A.Pixel) && (polyEdge.B.Pixel == activeList[i].B.Pixel)) &&
 					(edgeYMax < y))
 				{
 					activeList.erase(activeList.begin() + i);
@@ -326,13 +330,20 @@ void CCGWorkView::ScanConvert(CDC* pDc, std::vector<Edge> poly, COLORREF color)
 		std::vector<int> intersections;
 		for (Edge e : activeList)
 		{
-			int dy = e.b.y - e.a.y;
+			int dy = e.B.Pixel.y - e.A.Pixel.y;
 			if (dy == 0)
 				continue;
-			int dx = e.b.x - e.a.x;
+			int dx = e.B.Pixel.x - e.A.Pixel.x;
 
-			int x = (int)floor((y * dx + (e.a.x * e.b.y - e.b.x * e.a.y)) / dy);
+			// Calculate X axis intersections
+			int x = (int)floor((y * dx + (e.A.Pixel.x * e.B.Pixel.y - e.B.Pixel.x * e.A.Pixel.y)) / dy);
 			intersections.push_back(x);
+
+			// Calculate Z pos at intersections
+
+			// Caluclate RGB at intersections
+
+			// Calculate Normal at intersections
 		}
 
 		// Sort intersections by decreasing x values
@@ -356,6 +367,12 @@ void CCGWorkView::ScanConvert(CDC* pDc, std::vector<Edge> poly, COLORREF color)
 			int x = x0;
 			while (x <= x1)
 			{
+				// Caluclate z Pos at (x, y)
+
+				// Calcualte RGB at (x, y) according to shading
+
+				// Compare z Pos to zBuffer, if z Pos > zBuffer,
+				// Draw and update z buffer
 				pDc->SetPixel(x, y, color);
 				x++;
 			}
@@ -504,7 +521,7 @@ void CCGWorkView::DrawBoundingBox(CDC * pDC, const std::vector<Poly*>& polys, co
 			CPoint pix1((int)pix1Vec[0], (int)pix1Vec[1]);
 			CPoint pix2((int)pix2Vec[0], (int)pix2Vec[1]);
 
-			poly.push_back({ pix1, pix2 , color });
+			poly.push_back({ { pix1, clipped1[2] }, { pix2, clipped2[2] } , color });
 		}
 
 		DrawPoly(pDC, poly);
@@ -624,6 +641,12 @@ BOOL CCGWorkView::OnEraseBkgnd(CDC* pDC)
 	// Windows will clear the window with the background color every time your window 
 	// is redrawn, and then CGWork will clear the viewport with its own background color.
 
+	// Clear zBuffer
+	if (zBuffer != NULL)
+	{
+		delete zBuffer;
+		zBuffer = NULL;
+	}
 	
 	return true;
 }
@@ -665,6 +688,12 @@ void CCGWorkView::OnDraw(CDC* pDC)
 		isFirstDraw = false;
 	}
 
+	// Initialize zBuffer
+	int bufferSize = r.Width() * r.Height();
+	zBuffer = new double[bufferSize];
+	for (int i = 0; i < bufferSize; i++)
+		zBuffer[i] = -DBL_MAX;
+
 	//TODO BACKGROUND DRAWING
 	//todo flag isIMageLoaded
 	if (currentPolySelection != WIREFRAME && isBGFileOpen) {
@@ -678,8 +707,8 @@ void CCGWorkView::OnDraw(CDC* pDC)
 			double cx = (double)r.Width() / (double)pngReadFile.GetWidth();
 			double cy = (double)r.Height() / (double)pngReadFile.GetHeight();
 			
-			for (unsigned int x = 0; x < r.Width(); x++) {
-				for (unsigned y = 0; y < r.Height(); y++) {
+			for (int x = 0; x < r.Width(); x++) {
+				for (int y = 0; y < r.Height(); y++) {
 					// Calculate position in image
 					double v = x / cx;
 					double w = y / cy;
@@ -694,8 +723,8 @@ void CCGWorkView::OnDraw(CDC* pDC)
 			}
 		}
 		else {
-			for (unsigned int x = 0; x < r.Width(); x++) {
-				for (unsigned y = 0; y < r.Height(); y++) {
+			for (int x = 0; x < r.Width(); x++) {
+				for (int y = 0; y < r.Height(); y++) {
 					//TODO check for grayscale
 					int c = pngReadFile.GetValue(x % pngReadFile.GetWidth(), y % pngReadFile.GetHeight());
 					int r = GET_R(c);
@@ -777,7 +806,7 @@ void CCGWorkView::OnDraw(CDC* pDC)
 					// Construct poly for drawing
 					if (m_colorDialog.IsDiscoMode)
 						color = AL_RAINBOW_CREF;
-					poly.push_back({ pix1, pix2 , color });
+					poly.push_back({ { pix1, clipped1[2] }, { pix2, clipped2[2] } , color });
 
 					// Draw vertex normal if needed
 					if (Scene::GetInstance().AreVertexNormalsOn())
@@ -806,6 +835,7 @@ void CCGWorkView::OnDraw(CDC* pDC)
 				if (p->IsSelected)
 					selectedPolys.push_back(poly);
 
+				// Draw poly in wireframe mode or fill it, according to user selection
 				if (currentPolySelection == WIREFRAME)
 					DrawPoly(pDCToUse, poly);
 				else if (currentPolySelection == SOLID_SCREEN)
@@ -852,7 +882,7 @@ void CCGWorkView::OnDraw(CDC* pDC)
 		// Draw the selected polys in the end to make sure they are on top
 		DrawSelectedPolys(pDCToUse);
 
-		// Draw Bounding Box if needed
+		// Draw Model Bounding Box if needed
 		if (Scene::GetInstance().GetBBoxState() && !showGeos)
 		{
 			DrawBoundingBox(pDCToUse, model->GetBBox(), transform, camTransform, projection, toView, color);
@@ -1535,6 +1565,18 @@ void CCGWorkView::OnBackgroundOpen()
 	if (dlg.DoModal() == IDOK) {
 		BGFile = dlg.GetPathName();
 		isBGFileOpen = true; 
-	}
 
+		Invalidate();
+	}
+}
+
+
+void CCGWorkView::OnLightSetmaterial()
+{
+	CMaterialDlg dlg;
+	
+	if (dlg.DoModal() == IDOK)
+	{
+
+	}
 }

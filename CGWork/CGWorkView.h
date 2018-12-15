@@ -27,16 +27,15 @@
 
 struct DVertex
 {
-	int X;
-	int Y;
+	CPoint Pixel;
 	double Z;
-	Vec4 Color;
-	Vec4 Normal;
+	//Vec4 Color;
+	//Vec4 Normal;
 };
 
 struct Edge {
-	CPoint a, b;
-	//Vertex A, B;
+	//CPoint a, b;
+	DVertex A, B;
 	COLORREF color;
 };
 
@@ -75,6 +74,9 @@ private:
 
 	int m_nCoordSpace;		// The selected Coord space to perform transformations in
 
+	// Zbuffer array (screenWidth * screenHeight)
+	double* zBuffer;
+
 	// Orthographic projection height
 	double orthoHeight;
 	// BBOX parameters
@@ -91,6 +93,7 @@ private:
 	double normalSizeFactor;
 	bool showGeos;
 	bool aroundEye;
+	Vec4 m_sensitivity;
 
 	//Background 
 	bool isBGStretch;
@@ -126,8 +129,6 @@ private:
 	CPerspectiveDialog m_perspDialog;
 	CSensitivityDialog m_sensitivityDialog;
 	CResolutionDialog m_resolutionDialog;
-
-	Vec4 m_sensitivity;
 
 
 // Overrides
@@ -234,6 +235,7 @@ public:
 	afx_msg void OnBackgroundRepeat();
 	afx_msg void OnUpdateBackgroundRepeat(CCmdUI *pCmdUI);
 	afx_msg void OnBackgroundOpen();
+	afx_msg void OnLightSetmaterial();
 };
 
 #ifndef _DEBUG  // debug version in CGWorkView.cpp
