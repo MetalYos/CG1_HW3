@@ -4,13 +4,13 @@
 #include "Model.h"
 #include "Camera.h"
 #include "ALMath.h"
+#include "Light.h"
 
 class Scene
 {
 private:
 	std::vector<Model*> models;
 	Camera* camera;
-	//std::vector<Geometry*> geos;
 
 	bool isBBoxOn;
 	bool vertexNormals;
@@ -53,6 +53,6 @@ public:
 	int GetFineNess() const;
 
 	void DeleteModels();
-	//void Draw(); // TODO: Implement draw (will call do all the matrix multiplications and call renderer)
+	
 };
 

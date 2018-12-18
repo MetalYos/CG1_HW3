@@ -255,9 +255,45 @@ public:
 	}
 };
 
-void CCGWorkView::ScanConvert(CDC* pDc, std::vector<Edge> poly, COLORREF color)
+struct Intersection {
+	int x;
+	double z;
+	Vec4 color;
+	Vec4 normal;
+};
+
+class IntersectionsSorter
+{
+public:
+	bool operator()(const Intersection& i1, const Intersection& i2)
+	{
+		auto less = std::less<int>();
+		return less(i1.x, i2.x);
+	}
+};
+
+class IntersectionsComparer
+{
+public:
+	bool operator()(const Intersection& i1, const Intersection& i2)
+	{
+		return (i1.x == i2.x);
+	}
+};
+
+void CCGWorkView::ScanConvert(CDC* pDc, std::vector<Edge> poly, COLORREF color, Vec4 polyCenter, Vec4 polyNormal)
 {
 	assert(poly.size() > 2);
+	Material m;
+	if (m_nLightShading == ID_LIGHT_SHADING_FLAT)
+	{
+		// Calculate color
+		double r = (GetRValue(color) / 255.0) * (CalculateShading(m_lights, &m, polyCenter, polyNormal))[0];
+		double g = (GetGValue(color) / 255.0) * (CalculateShading(m_lights, &m, polyCenter, polyNormal))[1];
+		double b = (GetBValue(color) / 255.0) * (CalculateShading(m_lights, &m, polyCenter, polyNormal))[2];
+
+		color = RGB((int)(r * 255.0), (int)(g * 255.0), (int)(b * 255.0));
+	}
 
 	// Sort edges according to the ymin value
 	EdgeSorterY sorter;
@@ -275,7 +311,7 @@ void CCGWorkView::ScanConvert(CDC* pDc, std::vector<Edge> poly, COLORREF color)
 			ymax = poly[i].B.Pixel.y;
 	}
 	
-	int ymin = min(poly[0].A.Pixel.y, poly[0].B.Pixel.y);
+	int ymin = max(min(poly[0].A.Pixel.y, poly[0].B.Pixel.y), 0);
 	// Iterate over scan lines from ymin to ymax
 	for (int y = ymin; y <= ymax; y++)
 	{
@@ -327,7 +363,7 @@ void CCGWorkView::ScanConvert(CDC* pDc, std::vector<Edge> poly, COLORREF color)
 		activeList.resize(std::distance(activeList.begin(), it));
 
 		// Calculate points of intersections of A members with line Y = y
-		std::vector<int> intersections;
+		std::vector<Intersection> intersections;
 		for (Edge e : activeList)
 		{
 			int dy = e.B.Pixel.y - e.A.Pixel.y;
@@ -335,21 +371,28 @@ void CCGWorkView::ScanConvert(CDC* pDc, std::vector<Edge> poly, COLORREF color)
 				continue;
 			int dx = e.B.Pixel.x - e.A.Pixel.x;
 
+			Intersection i;
 			// Calculate X axis intersections
 			int x = (int)floor((y * dx + (e.A.Pixel.x * e.B.Pixel.y - e.B.Pixel.x * e.A.Pixel.y)) / dy);
-			intersections.push_back(x);
+			i.x = x;
 
 			// Calculate Z pos at intersections
+			double z = e.A.Z - (e.A.Z - e.B.Z) * ((double)(e.A.Pixel.y - y) / (double)(e.A.Pixel.y - e.B.Pixel.y));
+			i.z = z;
 
 			// Caluclate RGB at intersections
 
 			// Calculate Normal at intersections
+
+			intersections.push_back(i);
 		}
 
 		// Sort intersections by decreasing x values
-		std::sort(intersections.begin(), intersections.end());
+		IntersectionsSorter sorter;
+		std::sort(intersections.begin(), intersections.end(), sorter);
 		
-		auto it2 = std::unique(intersections.begin(), intersections.end());
+		IntersectionsComparer comp;
+		auto it2 = std::unique(intersections.begin(), intersections.end(), comp);
 		intersections.resize(std::distance(intersections.begin(), it2));
 		
 		if (intersections.size() == 1)
@@ -359,21 +402,33 @@ void CCGWorkView::ScanConvert(CDC* pDc, std::vector<Edge> poly, COLORREF color)
 		for (unsigned int i = 0; i < intersections.size(); i += 2)
 		{
 			// Draw line according to shading and zbuffer
-			int x0 = intersections[i];
+			int x0 = intersections[i].x;
 			if ((i + 1) >= intersections.size())
 				break;
-			int x1 = intersections[i + 1];
+			int x1 = intersections[i + 1].x;
+
+			// Get intersections z pos
+			double z0 = intersections[i].z;
+			if ((i + 1) >= intersections.size())
+				break;
+			double z1 = intersections[i + 1].z;
 
 			int x = x0;
 			while (x <= x1)
 			{
 				// Caluclate z Pos at (x, y)
+				double zp = z1 - (z1 - z0) * ((double)(x1 - x) / (double)(x1 - x0));
 
 				// Calcualte RGB at (x, y) according to shading
 
 				// Compare z Pos to zBuffer, if z Pos > zBuffer,
 				// Draw and update z buffer
-				pDc->SetPixel(x, y, color);
+				int index = min(x + m_WindowWidth * y, m_WindowWidth * m_WindowHeight - 1);
+				if (zp > zBuffer[index])
+				{
+					pDc->SetPixel(x, y, color);
+					zBuffer[index] = zp;
+				}
 				x++;
 			}
 		}
@@ -632,9 +687,38 @@ BOOL CCGWorkView::SetupViewingOrthoConstAspect(void)
 	return TRUE;
 }
 
+Vec4 CCGWorkView::CalculateShading(LightParams * lights, Material * material, Vec4 pos, Vec4 normal)
+{
+	Vec4 ambient = (Vec4(m_ambientLight.ColorR, m_ambientLight.ColorG, m_ambientLight.ColorB) / 255.0) * material->Ka;
+	Vec4 diffuse;
+	Vec4 specular;
+	for (int i = 0; i < MAX_LIGHT; i++)
+	{
+		if (lights[i].Enabled)
+		{
+			Vec4 intensity(lights[i].ColorR, lights[i].ColorG, lights[i].ColorB);
+			intensity /= 255.0;	// So intensity will be between 0.0 - 1.0
+			Vec4 lightPos(lights[i].PosX, lights[i].PosY, lights[i].PosZ);
+			Vec4 direction(lights[i].DirX, lights[i].DirY, lights[i].DirZ);
 
+			// normalize everything
+			direction = Vec4::Normalize3(direction);
+			normal = Vec4::Normalize3(normal);
 
+			if (lights[i].Type == LIGHT_TYPE_DIRECTIONAL)
+			{
+				diffuse += intensity * material->Kd * max(Vec4::Dot3(normal, direction), 0.0);
+			}
+			else
+			{
+				double distance = Vec4::Distance3(pos, lightPos);
+				diffuse += intensity * material->Kd * max(Vec4::Dot3(normal, Vec4::Normalize3(pos - lightPos)), 0.0) / distance;
+			}
+		}
+	}
 
+	return ambient + diffuse;
+}
 
 BOOL CCGWorkView::OnEraseBkgnd(CDC* pDC) 
 {
@@ -689,7 +773,7 @@ void CCGWorkView::OnDraw(CDC* pDC)
 	}
 
 	// Initialize zBuffer
-	int bufferSize = r.Width() * r.Height();
+	int bufferSize = m_WindowWidth * m_WindowHeight;
 	zBuffer = new double[bufferSize];
 	for (int i = 0; i < bufferSize; i++)
 		zBuffer[i] = -DBL_MAX;
@@ -741,17 +825,14 @@ void CCGWorkView::OnDraw(CDC* pDC)
 		pDCToUse->FillSolidRect(&r, bGColorRef);
 	}
 	
-	
 	std::vector<Model*> models = Scene::GetInstance().GetModels();
 	Camera* camera = Scene::GetInstance().GetCamera();
 	Mat4 camTransform = camera->GetTranform();
 	Mat4 projection = camera->GetProjection();
-
 	Mat4 toView(Vec4(m_WindowWidth / 2.0, 0.0, 0.0, 0.0),
 				Vec4(0.0, m_WindowHeight / 2.0, 0.0, 0.0),
 				Vec4(0.0, 0.0, 1.0, 0.0),
 				Vec4((m_WindowWidth - 1) / 2.0, (m_WindowHeight - 1) / 2.0, 0.0, 1.0));
-
 	
 	for (Model* model : models)
 	{
@@ -835,22 +916,24 @@ void CCGWorkView::OnDraw(CDC* pDC)
 				if (p->IsSelected)
 					selectedPolys.push_back(poly);
 
+				polyCenter = polyCenter * transform * camTransform;
+				Vec4 normal = Scene::GetInstance().GetCalcNormalState() ?
+					p->CalcNormal : p->Normal;
+				normal = normal * normalTransform * camTransform;
+
 				// Draw poly in wireframe mode or fill it, according to user selection
 				if (currentPolySelection == WIREFRAME)
 					DrawPoly(pDCToUse, poly);
 				else if (currentPolySelection == SOLID_SCREEN)
-					ScanConvert(pDCToUse, poly, color);
+					ScanConvert(pDCToUse, poly, color, polyCenter, normal);
 				else
-					ScanConvert(pDCToUse, poly, color);
+					ScanConvert(pDCToUse, poly, color, polyCenter, normal);
 
 				// Draw poly normal if needed
 				if (Scene::GetInstance().ArePolyNormalsOn())
 				{
-					Vec4 normal = Scene::GetInstance().GetCalcNormalState() ?
-						p->CalcNormal : p->Normal;
-
-					polyCenter = polyCenter * transform * camTransform * projection;
-					normal = normal * normalTransform * camTransform * projection;
+					polyCenter = polyCenter * projection;
+					normal = normal * projection;
 					normal = Vec4::Normalize3(normal);
 
 					polyCenter /= polyCenter[3];
@@ -964,7 +1047,7 @@ void CCGWorkView::OnFileLoad()
 			offset = 3.5;
 		}
 		double zPos = abs(radius / f) * offset;
-		camera->LookAt(bboxCenter - Vec4(0.0, 0.0, zPos), bboxCenter, Vec4(0.0, -1.0, 0.0));
+		camera->LookAt(bboxCenter - Vec4(0.0, 0.0, zPos), bboxCenter, Vec4(0.0, 1.0, 0.0));
 
 		// Set Perspective projection
 #ifdef D_PERSP

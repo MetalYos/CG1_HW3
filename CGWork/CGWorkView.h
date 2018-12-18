@@ -24,6 +24,7 @@
 #include "CResolutionDialog.h"
 #include "Vec4.h"
 #include "Geometry.h"
+#include "Material.h"
 
 struct DVertex
 {
@@ -140,7 +141,7 @@ public:
 	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
 	void DrawLine(CDC* pDC, COLORREF color, CPoint a, CPoint b);
 	void DrawPoly(CDC* pDc, std::vector<Edge>);
-	void ScanConvert(CDC* pDc, std::vector<Edge> poly, COLORREF color);
+	void ScanConvert(CDC* pDc, std::vector<Edge> poly, COLORREF color, Vec4 polyCenter = Vec4(0.0), Vec4 polyNormal = Vec4(0.0));
 	protected:
 	//}}AFX_VIRTUAL
 
@@ -156,6 +157,8 @@ protected:
 	BOOL InitializeCGWork();
 	BOOL SetupViewingFrustum(void);
 	BOOL SetupViewingOrthoConstAspect(void);
+
+	Vec4 CalculateShading(LightParams* lights, Material* material, Vec4 pos, Vec4 normal);
 
 	virtual void RenderScene();
 

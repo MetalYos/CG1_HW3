@@ -38,6 +38,11 @@ public:
 	Vec4 operator -(const Vec4& v) const;
 	Vec4& operator -=(const Vec4& v);
 
+	// Multiplication with Vec4 overloading
+	// Multiplication with scalar operator overloading
+	Vec4 operator *(const Vec4& v) const;
+	Vec4& operator *=(const Vec4& v);
+
 	// Multiplication with scalar operator overloading
 	Vec4 operator *(double c) const;
 	Vec4& operator *=(double c);

@@ -44,9 +44,9 @@ Mat4 Camera::GetTranform() const
 void Camera::SetOrthographic(double left, double right, double top, double bottom, double z_near, double z_far)
 {
 	Mat4 result;
-	result[0][0] = 2.0 / (right - left);
-	result[1][1] = 2.0 / (top - bottom);
-	result[2][2] = -2.0 / (z_far - z_near);
+	result[0][0] = -2.0 / (right - left);
+	result[1][1] = -2.0 / (top - bottom);
+	result[2][2] = 2.0 / (z_far - z_near);
 	result[3][0] = -(right + left) / (right - left);
 	result[3][1] = -(top + bottom) / (top - bottom);
 	result[3][2] = -(z_far + z_near) / (z_far - z_near);
@@ -117,7 +117,7 @@ void Camera::SetPerspective2(double fovy, double aspectR, double alpha, double d
 	result[0][0] = 1.0 / (f * aspectR);
 	result[1][1] = 1.0 / f;
 	result[2][2] = -d / (d - alpha);
-	result[2][3] = -1.0 / d;
+	result[2][3] = 1.0 / d;
 	result[3][2] = -alpha * d / (d - alpha);
 	result[3][3] = 0.0;
 

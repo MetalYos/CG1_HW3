@@ -2,11 +2,13 @@
 
 #include "ALMath.h"
 #include "Geometry.h"
+#include "Material.h"
 
 class Model
 {
 private:
 	std::vector<Geometry*> geos;
+	Material* material;
 	Mat4 transform;
 	Mat4 normalTransform;
 	Vec4 color;
@@ -18,7 +20,7 @@ private:
 	Vec4 maxCoord;
 
 public:
-	Model() : color(AL_WHITE), normalColor(AL_RED) { }
+	Model() : material(new Material()), color(AL_WHITE), normalColor(AL_RED) { }
 	~Model();
 
 	void AddGeometry(Geometry* geo);
@@ -43,6 +45,8 @@ public:
 	void BuildBoundingBox();
 	Vec4 GetBBoxDimensions() const;
 	Vec4 GetBBoxCenter() const;
+
+	Material* GetMaterial();
 	
 	void DeleteGeometries();
 

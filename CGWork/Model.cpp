@@ -3,6 +3,7 @@
 Model::~Model()
 {
 	DeleteGeometries();
+	delete material;
 }
 
 void Model::AddGeometry(Geometry * geo)
@@ -171,6 +172,11 @@ Vec4 Model::GetBBoxCenter() const
 	Vec4 result = minCoord + (maxCoord - minCoord) / 2.0;
 	result[3] = 1.0;
 	return result;
+}
+
+Material * Model::GetMaterial()
+{
+	return material;
 }
 
 void Model::DeleteGeometries()

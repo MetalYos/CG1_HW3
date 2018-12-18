@@ -83,6 +83,21 @@ Vec4 & Vec4::operator-=(const Vec4 & v)
 	return (*this = *this - v);
 }
 
+Vec4 Vec4::operator*(const Vec4 & v) const
+{
+	Vec4 result;
+	for (int i = 0; i < 4; i++)
+	{
+		result[i] = data[i] * v.data[i];
+	}
+	return result;
+}
+
+Vec4 & Vec4::operator*=(const Vec4 & v)
+{
+	return (*this = *this * v);
+}
+
 Vec4 Vec4::operator*(double c) const
 {
 	Vec4 result;
@@ -118,7 +133,9 @@ Vec4 & Vec4::operator*=(const Mat4 & m)
 
 Vec4 Vec4::operator/(double c) const
 {
-	assert(c != 0);
+	//assert(c != 0);
+	if (abs(c) < AL_DBL_EPSILON)
+		int t = 7;
 	return *this * (1.0 / c);
 }
 
