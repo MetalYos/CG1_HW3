@@ -1,21 +1,34 @@
 Todo List:
 
 -----------------------TODO----------------------------------
-1. In CGView.h need to add a vertex struct that will hold:
-	int x, int y, double z (after projection), Vec4 color, Vec4 normal (view space).
-The edge struct should hold Vertex instead of CPoint.
-2. Z-Buffer - calculate z pos using interpolation (indian guy formula - Ben) than fill polygon according to z pos.
-Untill
-3. Add Material class that will hold ka, ks, kd - add it to the Model.
-4. Lighting - Add light class with all of it's parameters (intensity).
-5. Calculate color according to lights and shading.
-6. Save to file.
-7. Normal inverse.
+
+
+
+3. connect the material dialog
+
+5.1 Add support to object space lighting.
+
+5. Calculate color according to lights and shading - test.
+
+
+------------Yossi-----------------------
+
 9. Backface culling.
-10. Silhouette highlighting:
-11.. Comment the hell out of the code.
-12. Add renderer class and abstract some of the functions in CGView to it - lowest of low priorities.
+10. Silhouette highlighting
+
+
+------------BEN-----------------------
+
+6. Save to file. by default size
+7. Normal inverse.
 
 -----------------------DONE--------------------------------
 1. Solid fill rendering.
 8. Background.
+2. Z-Buffer - calculate z pos using interpolation (indian guy formula - Ben) than fill polygon according to z pos.
+Untill
+3. Add Material class that will hold ka, ks, kd - add it to the Model.
+
+1. In CGView.h need to add a vertex struct that will hold:
+	int x, int y, double z (after projection), Vec4 color, Vec4 normal (view space).
+The edge struct should hold Vertex instead of CPoint.
