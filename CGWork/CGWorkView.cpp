@@ -138,6 +138,9 @@ CCGWorkView::CCGWorkView()
 
 	//init the first light to be enabled
 	m_lights[LIGHT_ID_1].Enabled = true;
+	m_lights[LIGHT_ID_1].DirX = 1.0;
+	m_lights[LIGHT_ID_1].DirY = 1.0;
+	m_lights[LIGHT_ID_1].DirZ = 1.0;
 	m_pDbBitMap = NULL;
 	m_pDbDC = NULL;
 
@@ -157,6 +160,7 @@ CCGWorkView::CCGWorkView()
 	currentPolySelection = WIREFRAME;
 	isBGStretch = false;
 	isBGFileOpen = false;
+	isModelLoaded = false;
 }
 
 CCGWorkView::~CCGWorkView()
@@ -287,14 +291,14 @@ public:
 void CCGWorkView::ScanConvert(CDC* pDc, std::vector<Edge> poly, COLORREF color, Vec4 polyCenter, Vec4 polyNormal)
 {
 	assert(poly.size() > 2);
-	Material m;
 	COLORREF objectColor = color;
+	Material* m = Scene::GetInstance().GetModels().back()->GetMaterial();
 	if (m_nLightShading == ID_LIGHT_SHADING_FLAT)
 	{
 		// Calculate color
-		double r = (GetRValue(objectColor) / 255.0) * (CalculateShading(m_lights, &m, polyCenter, polyNormal))[0];
-		double g = (GetGValue(objectColor) / 255.0) * (CalculateShading(m_lights, &m, polyCenter, polyNormal))[1];
-		double b = (GetBValue(objectColor) / 255.0) * (CalculateShading(m_lights, &m, polyCenter, polyNormal))[2];
+		double r = (GetRValue(objectColor) / 255.0) * (CalculateShading(m_lights, m, polyCenter, polyNormal))[0];
+		double g = (GetGValue(objectColor) / 255.0) * (CalculateShading(m_lights, m, polyCenter, polyNormal))[1];
+		double b = (GetBValue(objectColor) / 255.0) * (CalculateShading(m_lights, m, polyCenter, polyNormal))[2];
 
 		color = RGB((int)(r * 255.0), (int)(g * 255.0), (int)(b * 255.0));
 	}
@@ -464,9 +468,9 @@ void CCGWorkView::ScanConvert(CDC* pDc, std::vector<Edge> poly, COLORREF color, 
 					Vec4 normal = n1 - (n1 - n0) * ((double)(x1 - x) / (double)(x1 - x0));
 					Vec4 pos = v1 - (v1 - v0) * ((double)(x1 - x) / (double)(x1 - x0));
 					// Calculate color
-					double r = (GetRValue(objectColor) / 255.0) * (CalculateShading(m_lights, &m, pos, normal))[0];
-					double g = (GetGValue(objectColor) / 255.0) * (CalculateShading(m_lights, &m, pos, normal))[1];
-					double b = (GetBValue(objectColor) / 255.0) * (CalculateShading(m_lights, &m, pos, normal))[2];
+					double r = (GetRValue(objectColor) / 255.0) * (CalculateShading(m_lights, m, pos, normal))[0];
+					double g = (GetGValue(objectColor) / 255.0) * (CalculateShading(m_lights, m, pos, normal))[1];
+					double b = (GetBValue(objectColor) / 255.0) * (CalculateShading(m_lights, m, pos, normal))[2];
 					color = RGB((int)(r * 255.0), (int)(g * 255.0), (int)(b * 255.0));
 				}
 				// Compare z Pos to zBuffer, if z Pos > zBuffer,
@@ -887,15 +891,13 @@ Vec4 CCGWorkView::CalculateShading(LightParams * lights, Material * material, Ve
 			R = R * max(Vec4::Dot3(-normal, -direction), 0.0);
 			R = R - direction;
 			R = -Vec4::Normalize3(R);
-			specular += intensity * material->kS * pow(max(Vec4::Dot3(R, camDir), 0.0), material->Specular);
-			//specular += intensity * material->kS;
-
+			specular += intensity * material->Ks * pow(max(Vec4::Dot3(R, camDir), 0.0), material->Specular);
 
 			double distance = Vec4::Distance3(pos, lightPos);
 			if (lights[i].Type != LIGHT_TYPE_DIRECTIONAL)
 			{
-				//diffuse /= distance;
-				//specular /= distance;
+				diffuse /= distance;
+				specular /= distance;
 			}
 		}
 	}
@@ -964,154 +966,158 @@ void CCGWorkView::OnDraw(CDC* pDC)
 	// Background Drawing
 	DrawBackground(pDCToUse, r);
 	
-	std::vector<Model*> models = Scene::GetInstance().GetModels();
-	Camera* camera = Scene::GetInstance().GetCamera();
-	Mat4 camTransform = camera->GetTranform();
-	Mat4 projection = camera->GetProjection();
-	Mat4 toView(Vec4(m_WindowWidth / 2.0, 0.0, 0.0, 0.0),
-				Vec4(0.0, m_WindowHeight / 2.0, 0.0, 0.0),
-				Vec4(0.0, 0.0, 1.0, 0.0),
-				Vec4((m_WindowWidth - 1) / 2.0, (m_WindowHeight - 1) / 2.0, 0.0, 1.0));
-	
-	for (Model* model : models)
+	// Don't draw if model is not finished loading
+	if (isModelLoaded)
 	{
-		Mat4 transform = model->GetTransform();
-		Mat4 normalTransform = model->GetNormalTransform();
-		COLORREF color = isCColorDialogOpen ? m_colorDialog.WireframeColor :
-			RGB(model->GetColor()[0], model->GetColor()[1], model->GetColor()[2]);
-		COLORREF normalColor = isCColorDialogOpen ? m_colorDialog.NormalColor :
-			RGB(model->GetNormalColor()[0], model->GetNormalColor()[1], model->GetNormalColor()[2]);
-		for (Geometry* geo : model->GetGeometries())
+		std::vector<Model*> models = Scene::GetInstance().GetModels();
+		Camera* camera = Scene::GetInstance().GetCamera();
+		Mat4 camTransform = camera->GetTranform();
+		Mat4 projection = camera->GetProjection();
+		Mat4 toView(Vec4(m_WindowWidth / 2.0, 0.0, 0.0, 0.0),
+			Vec4(0.0, m_WindowHeight / 2.0, 0.0, 0.0),
+			Vec4(0.0, 0.0, 1.0, 0.0),
+			Vec4((m_WindowWidth - 1) / 2.0, (m_WindowHeight - 1) / 2.0, 0.0, 1.0));
+
+		for (Model* model : models)
 		{
-			color = (!showGeos) ? color :
-				RGB((BYTE)geo->Color[0], (BYTE)geo->Color[1], (BYTE)geo->Color[2]);
-			COLORREF selectedColor = RGB((BYTE)(255.0 - model->GetColor()[0]),
-				(BYTE)(255.0 - model->GetColor()[1]), (BYTE)(255.0 - model->GetColor()[2]));
-			// Draw Polys
-			std::vector<Poly*> polygons = geo->Polygons;
-			for (Poly* p : polygons)
+			Mat4 transform = model->GetTransform();
+			Mat4 normalTransform = model->GetNormalTransform();
+			COLORREF color = isCColorDialogOpen ? m_colorDialog.WireframeColor :
+				RGB(model->GetColor()[0], model->GetColor()[1], model->GetColor()[2]);
+			COLORREF normalColor = isCColorDialogOpen ? m_colorDialog.NormalColor :
+				RGB(model->GetNormalColor()[0], model->GetNormalColor()[1], model->GetNormalColor()[2]);
+			for (Geometry* geo : model->GetGeometries())
 			{
-				std::vector<Edge> poly;
-				std::vector<Vec4Line> polyEdges;
-				Vec4 polyCenter;
-				for (unsigned int i = 0; i < p->Vertices.size(); i++)
+				color = (!showGeos) ? color :
+					RGB((BYTE)geo->Color[0], (BYTE)geo->Color[1], (BYTE)geo->Color[2]);
+				COLORREF selectedColor = RGB((BYTE)(255.0 - model->GetColor()[0]),
+					(BYTE)(255.0 - model->GetColor()[1]), (BYTE)(255.0 - model->GetColor()[2]));
+				// Draw Polys
+				std::vector<Poly*> polygons = geo->Polygons;
+				for (Poly* p : polygons)
 				{
-					// Save vertices in object space
-					Vec4 pos1 = p->Vertices[i]->Pos;
-					Vec4 pos2 = p->Vertices[(i + 1) % p->Vertices.size()]->Pos;
-					polyCenter += pos1;
-
-					// Transform vertices from object space to normalized device coords
-					Vec4 clipped1 = pos1 * transform * camTransform * projection;
-					Vec4 clipped2 = pos2 * transform * camTransform * projection;
-
-					// Divide by W
-					clipped1 /= clipped1[3];
-					clipped2 /= clipped2[3];
-
-					// Basic Z clipping
-					if (IsClippedZ(clipped1, clipped2))
-						continue;
-
-					// Transform from NDC to screen space
-					Vec4 pix1Vec(clipped1 * toView);
-					Vec4 pix2Vec(clipped2 * toView);
-
-					CPoint pix1((int)pix1Vec[0], (int)pix1Vec[1]);
-					CPoint pix2((int)pix2Vec[0], (int)pix2Vec[1]);
-
-					// Contruct poly for mouse selection test
-					polyEdges.push_back({ pix1Vec, pix2Vec });
-
-					// Initialize vertex for drawing
-					DVertex dVertex1, dVertex2;
-
-					Vec4 normal1 = Scene::GetInstance().GetCalcNormalState() ?
-						p->Vertices[i]->CalcNormal : p->Vertices[i]->Normal;
-					Vec4 normal2 = Scene::GetInstance().GetCalcNormalState() ?
-						p->Vertices[(i + 1) % p->Vertices.size()]->CalcNormal : 
-						p->Vertices[(i + 1) % p->Vertices.size()]->Normal;
-
-					// Save parameters in DVertex
-					dVertex1.Pixel = pix1;
-					dVertex1.PosVS = pos1 * transform * camTransform;
-					dVertex1.Z = clipped1[2];
-					dVertex1.NormalVS = normal1 * transform * camTransform;
-					// Calculate color
-					double r = ((GetRValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex1.PosVS, dVertex1.NormalVS))[0]) * 255.0;
-					double g = ((GetGValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex1.PosVS, dVertex1.NormalVS))[1]) * 255.0;
-					double b = ((GetBValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex1.PosVS, dVertex1.NormalVS))[2]) * 255.0;
-					dVertex1.Color = Vec4(r, g, b);
-
-					dVertex2.Pixel = pix2;
-					dVertex2.PosVS = pos2 * transform * camTransform;
-					dVertex2.Z = clipped2[2];
-					dVertex2.NormalVS = normal2 * transform * camTransform;
-					// Calculate color
-					r = ((GetRValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex2.PosVS, dVertex2.NormalVS))[0]) * 255.0;
-					g = ((GetGValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex2.PosVS, dVertex2.NormalVS))[1]) * 255.0;
-					b = ((GetBValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex2.PosVS, dVertex2.NormalVS))[2]) * 255.0;
-					dVertex2.Color = Vec4(r, g, b);
-
-					// Construct poly for drawing
-					if (m_colorDialog.IsDiscoMode)
-						color = AL_RAINBOW_CREF;
-					poly.push_back({ dVertex1, dVertex2 , color });
-
-					// Draw vertex normal if needed
-					if (Scene::GetInstance().AreVertexNormalsOn())
+					std::vector<Edge> poly;
+					std::vector<Vec4Line> polyEdges;
+					Vec4 polyCenter;
+					for (unsigned int i = 0; i < p->Vertices.size(); i++)
 					{
-						DrawVertexNormal(pDCToUse, p->Vertices[i], transform, normalTransform,
+						// Save vertices in object space
+						Vec4 pos1 = p->Vertices[i]->Pos;
+						Vec4 pos2 = p->Vertices[(i + 1) % p->Vertices.size()]->Pos;
+						polyCenter += pos1;
+
+						// Transform vertices from object space to normalized device coords
+						Vec4 clipped1 = pos1 * transform * camTransform * projection;
+						Vec4 clipped2 = pos2 * transform * camTransform * projection;
+
+						// Divide by W
+						clipped1 /= clipped1[3];
+						clipped2 /= clipped2[3];
+
+						// Basic Z clipping
+						if (IsClippedZ(clipped1, clipped2))
+							continue;
+
+						// Transform from NDC to screen space
+						Vec4 pix1Vec(clipped1 * toView);
+						Vec4 pix2Vec(clipped2 * toView);
+
+						CPoint pix1((int)pix1Vec[0], (int)pix1Vec[1]);
+						CPoint pix2((int)pix2Vec[0], (int)pix2Vec[1]);
+
+						// Contruct poly for mouse selection test
+						polyEdges.push_back({ pix1Vec, pix2Vec });
+
+						// Initialize vertex for drawing
+						DVertex dVertex1, dVertex2;
+
+						Vec4 normal1 = Scene::GetInstance().GetCalcNormalState() ?
+							p->Vertices[i]->CalcNormal : p->Vertices[i]->Normal;
+						Vec4 normal2 = Scene::GetInstance().GetCalcNormalState() ?
+							p->Vertices[(i + 1) % p->Vertices.size()]->CalcNormal :
+							p->Vertices[(i + 1) % p->Vertices.size()]->Normal;
+
+						// Save parameters in DVertex
+						dVertex1.Pixel = pix1;
+						dVertex1.PosVS = pos1 * transform * camTransform;
+						dVertex1.Z = clipped1[2];
+						dVertex1.NormalVS = normal1 * transform * camTransform;
+						// Calculate color
+						double r = ((GetRValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex1.PosVS, dVertex1.NormalVS))[0]) * 255.0;
+						double g = ((GetGValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex1.PosVS, dVertex1.NormalVS))[1]) * 255.0;
+						double b = ((GetBValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex1.PosVS, dVertex1.NormalVS))[2]) * 255.0;
+						dVertex1.Color = Vec4(r, g, b);
+
+						dVertex2.Pixel = pix2;
+						dVertex2.PosVS = pos2 * transform * camTransform;
+						dVertex2.Z = clipped2[2];
+						dVertex2.NormalVS = normal2 * transform * camTransform;
+						// Calculate color
+						r = ((GetRValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex2.PosVS, dVertex2.NormalVS))[0]) * 255.0;
+						g = ((GetGValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex2.PosVS, dVertex2.NormalVS))[1]) * 255.0;
+						b = ((GetBValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex2.PosVS, dVertex2.NormalVS))[2]) * 255.0;
+						dVertex2.Color = Vec4(r, g, b);
+
+						// Construct poly for drawing
+						if (m_colorDialog.IsDiscoMode)
+							color = AL_RAINBOW_CREF;
+						poly.push_back({ dVertex1, dVertex2 , color });
+
+						// Draw vertex normal if needed
+						if (Scene::GetInstance().AreVertexNormalsOn())
+						{
+							DrawVertexNormal(pDCToUse, p->Vertices[i], transform, normalTransform,
+								camTransform, projection, toView, normalColor);
+						}
+					}
+					// Calculate poly center
+					polyCenter /= p->Vertices.size();
+
+					// If mouse button was clicked in Select mode perform intersection caculation
+					if (mouseClicked)
+						SetSelectedPoly(mouseClickPos, p, polyEdges);
+
+					// If the poly was selected, save it in the selectedPolys list
+					if (p->IsSelected)
+						selectedPolys.push_back(poly);
+
+					polyCenter = polyCenter * transform * camTransform;
+					Vec4 normal = Scene::GetInstance().GetCalcNormalState() ?
+						p->CalcNormal : p->Normal;
+					normal = normal * normalTransform * camTransform;
+
+					// Draw poly in wireframe mode or fill it, according to user selection
+					if (currentPolySelection == WIREFRAME)
+						DrawPoly(pDCToUse, poly);
+					else if (currentPolySelection == SOLID_SCREEN)
+						ScanConvert(pDCToUse, poly, color, polyCenter, normal);
+					else
+						ScanConvert(pDCToUse, poly, color, polyCenter, normal);
+
+					// Draw poly normal if needed
+					if (Scene::GetInstance().ArePolyNormalsOn())
+					{
+						DrawPolyNormal(pDCToUse, p, transform, normalTransform,
 							camTransform, projection, toView, normalColor);
 					}
 				}
-				// Calculate poly center
-				polyCenter /= p->Vertices.size();
 
-				// If mouse button was clicked in Select mode perform intersection caculation
-				if (mouseClicked)
-					SetSelectedPoly(mouseClickPos, p, polyEdges);
-
-				// If the poly was selected, save it in the selectedPolys list
-				if (p->IsSelected)
-					selectedPolys.push_back(poly);
-
-				polyCenter = polyCenter * transform * camTransform;
-				Vec4 normal = Scene::GetInstance().GetCalcNormalState() ?
-					p->CalcNormal : p->Normal;
-				normal = normal * normalTransform * camTransform;
-
-				// Draw poly in wireframe mode or fill it, according to user selection
-				if (currentPolySelection == WIREFRAME)
-					DrawPoly(pDCToUse, poly);
-				else if (currentPolySelection == SOLID_SCREEN)
-					ScanConvert(pDCToUse, poly, color, polyCenter, normal);
-				else
-					ScanConvert(pDCToUse, poly, color, polyCenter, normal);
-
-				// Draw poly normal if needed
-				if (Scene::GetInstance().ArePolyNormalsOn())
+				// Draw Geo Bounding Box if needed
+				if (Scene::GetInstance().GetBBoxState() && showGeos)
 				{
-					DrawPolyNormal(pDCToUse, p, transform, normalTransform,
-						camTransform, projection, toView, normalColor);
+					DrawBoundingBox(pDCToUse, geo->BBox, transform, camTransform, projection, toView, color);
 				}
 			}
+			// Reset mouseclicked flag
+			mouseClicked = false;
+			// Draw the selected polys in the end to make sure they are on top
+			DrawSelectedPolys(pDCToUse);
 
-			// Draw Geo Bounding Box if needed
-			if (Scene::GetInstance().GetBBoxState() && showGeos)
+			// Draw Model Bounding Box if needed
+			if (Scene::GetInstance().GetBBoxState() && !showGeos)
 			{
-				DrawBoundingBox(pDCToUse, geo->BBox, transform, camTransform, projection, toView, color);
+				DrawBoundingBox(pDCToUse, model->GetBBox(), transform, camTransform, projection, toView, color);
 			}
-		}
-		// Reset mouseclicked flag
-		mouseClicked = false;
-		// Draw the selected polys in the end to make sure they are on top
-		DrawSelectedPolys(pDCToUse);
-
-		// Draw Model Bounding Box if needed
-		if (Scene::GetInstance().GetBBoxState() && !showGeos)
-		{
-			DrawBoundingBox(pDCToUse, model->GetBBox(), transform, camTransform, projection, toView, color);
 		}
 	}
 
@@ -1158,6 +1164,8 @@ void CCGWorkView::OnFileLoad()
 	CFileDialog dlg(TRUE, _T("itd"), _T("*.itd"), OFN_FILEMUSTEXIST | OFN_HIDEREADONLY ,szFilters);
 
 	if (dlg.DoModal () == IDOK) {
+		isModelLoaded = false;
+
 		// Delete previous models
 		Scene::GetInstance().DeleteModels();
 
@@ -1210,6 +1218,14 @@ void CCGWorkView::OnFileLoad()
 		// Set ColorDialog model color
 		m_colorDialog.WireframeColor = RGB(model->GetColor()[0], model->GetColor()[1], model->GetColor()[2]);
 
+		// Model material using the Material dialog
+		Material* material = model->GetMaterial();
+		material->Ka = m_materialDialog.GetAmbientCoeffs();
+		material->Kd = m_materialDialog.GetDiffuseCoeffs();
+		material->Ks = m_materialDialog.GetShininessCoeffs();
+		material->Specular = m_materialDialog.GetSpecularCoeff();
+
+		isModelLoaded = true;
 		Invalidate();	// force a WM_PAINT for drawing.
 	} 
 }
@@ -1822,10 +1838,17 @@ void CCGWorkView::OnBackgroundOpen()
 
 void CCGWorkView::OnLightSetmaterial()
 {
-	CMaterialDlg dlg;
-	
-	if (dlg.DoModal() == IDOK)
+	if (m_materialDialog.DoModal() == IDOK)
 	{
+		if (Scene::GetInstance().GetModels().size() > 0)
+		{
+			Material* material = Scene::GetInstance().GetModels().back()->GetMaterial();
+			material->Ka = m_materialDialog.GetAmbientCoeffs();
+			material->Kd = m_materialDialog.GetDiffuseCoeffs();
+			material->Ks = m_materialDialog.GetShininessCoeffs();
+			material->Specular = m_materialDialog.GetSpecularCoeff();
+		}
 
+		Invalidate();
 	}
 }

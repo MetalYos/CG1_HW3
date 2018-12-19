@@ -14,9 +14,6 @@ CLightDialog::CLightDialog(CWnd* pParent /*=NULL*/)
 	: CDialog(CLightDialog::IDD, pParent)
 {
     m_currentLightIdx = 0;
-	m_lights[m_currentLightIdx].DirX = 1.0;
-	m_lights[m_currentLightIdx].DirY = 1.0;
-	m_lights[m_currentLightIdx].DirZ = 1.0;
 }
 
 CLightDialog::~CLightDialog()

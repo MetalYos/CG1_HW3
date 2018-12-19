@@ -22,6 +22,7 @@
 #include "ALMath.h"
 #include "CSensitivityDialog.h"
 #include "CResolutionDialog.h"
+#include "MaterialDlg.h"
 #include "Vec4.h"
 #include "Geometry.h"
 #include "Material.h"
@@ -96,6 +97,7 @@ private:
 	bool showGeos;
 	bool aroundEye;
 	Vec4 m_sensitivity;
+	bool isModelLoaded;
 
 	//Background 
 	bool isBGStretch;
@@ -138,7 +140,7 @@ private:
 	CPerspectiveDialog m_perspDialog;
 	CSensitivityDialog m_sensitivityDialog;
 	CResolutionDialog m_resolutionDialog;
-
+	CMaterialDlg m_materialDialog;
 
 // Overrides
 	// ClassWizard generated virtual function overrides

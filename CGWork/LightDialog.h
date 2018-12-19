@@ -14,7 +14,7 @@ public:
 	virtual ~CLightDialog();
 
 	//dialog interface
-	void SetDialogData(LightID id,const LightParams& light);
+	void SetDialogData(LightID id, const LightParams& light);
 	LightParams GetDialogData(LightID id);
 
 // Dialog Data
