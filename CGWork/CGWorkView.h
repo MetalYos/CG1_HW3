@@ -168,7 +168,7 @@ protected:
 	BOOL SetupViewingFrustum(void);
 	BOOL SetupViewingOrthoConstAspect(void);
 
-	Vec4 CalculateShading(LightParams* lights, Material* material, Vec4 pos, Vec4 normal);
+	Vec4 CalculateShading(LightParams* lights, Material* material, Vec4 pos, Vec4 normal, COLORREF color);
 
 	virtual void RenderScene();
 

@@ -296,11 +296,8 @@ void CCGWorkView::ScanConvert(CDC* pDc, std::vector<Edge> poly, COLORREF color, 
 	if (m_nLightShading == ID_LIGHT_SHADING_FLAT)
 	{
 		// Calculate color
-		double r = (GetRValue(objectColor) / 255.0) * (CalculateShading(m_lights, m, polyCenter, polyNormal))[0];
-		double g = (GetGValue(objectColor) / 255.0) * (CalculateShading(m_lights, m, polyCenter, polyNormal))[1];
-		double b = (GetBValue(objectColor) / 255.0) * (CalculateShading(m_lights, m, polyCenter, polyNormal))[2];
-
-		color = RGB((int)(r * 255.0), (int)(g * 255.0), (int)(b * 255.0));
+		Vec4 c = CalculateShading(m_lights, m, polyCenter, polyNormal, objectColor);
+		color = RGB((int)(c[0] * 255.0), (int)(c[1] * 255.0), (int)(c[2] * 255.0));
 	}
 
 	// Sort edges according to the ymin value
@@ -468,10 +465,8 @@ void CCGWorkView::ScanConvert(CDC* pDc, std::vector<Edge> poly, COLORREF color, 
 					Vec4 normal = n1 - (n1 - n0) * ((double)(x1 - x) / (double)(x1 - x0));
 					Vec4 pos = v1 - (v1 - v0) * ((double)(x1 - x) / (double)(x1 - x0));
 					// Calculate color
-					double r = (GetRValue(objectColor) / 255.0) * (CalculateShading(m_lights, m, pos, normal))[0];
-					double g = (GetGValue(objectColor) / 255.0) * (CalculateShading(m_lights, m, pos, normal))[1];
-					double b = (GetBValue(objectColor) / 255.0) * (CalculateShading(m_lights, m, pos, normal))[2];
-					color = RGB((int)(r * 255.0), (int)(g * 255.0), (int)(b * 255.0));
+					Vec4 c = CalculateShading(m_lights, m, pos, normal, objectColor);
+					color = RGB((int)(c[0] * 255.0), (int)(c[1] * 255.0), (int)(c[2] * 255.0));
 				}
 				// Compare z Pos to zBuffer, if z Pos > zBuffer,
 				// Draw and update z buffer
@@ -857,7 +852,7 @@ BOOL CCGWorkView::SetupViewingOrthoConstAspect(void)
 	return TRUE;
 }
 
-Vec4 CCGWorkView::CalculateShading(LightParams * lights, Material * material, Vec4 pos, Vec4 normal)
+Vec4 CCGWorkView::CalculateShading(LightParams* lights, Material* material, Vec4 pos, Vec4 normal, COLORREF color)
 {
 	Vec4 ambient = (Vec4(m_ambientLight.ColorR, m_ambientLight.ColorG, m_ambientLight.ColorB) / 255.0) * material->Ka;
 	Vec4 diffuse;
@@ -866,10 +861,19 @@ Vec4 CCGWorkView::CalculateShading(LightParams * lights, Material * material, Ve
 	{
 		if (lights[i].Enabled)
 		{
-			Vec4 intensity(lights[i].ColorR, lights[i].ColorG, lights[i].ColorB);
-			intensity /= 255.0;	// So intensity will be between 0.0 - 1.0
 			Vec4 lightPos(lights[i].PosX, lights[i].PosY, lights[i].PosZ);
 			Vec4 direction(lights[i].DirX, lights[i].DirY, lights[i].DirZ);
+			if (lights[i].Space == LIGHT_SPACE_LOCAL)
+			{
+				Mat4 modelTransform = Scene::GetInstance().GetModels().back()->GetTransform();
+				Mat4 camTransform = Scene::GetInstance().GetCamera()->GetTranform();
+
+				lightPos = lightPos * modelTransform * camTransform;
+				direction = direction * modelTransform * camTransform;
+			}
+
+			Vec4 intensity(lights[i].ColorR, lights[i].ColorG, lights[i].ColorB);
+			intensity /= 255.0;	// So intensity will be between 0.0 - 1.0
 
 			// normalize everything
 			direction = (lights[i].Type == LIGHT_TYPE_DIRECTIONAL) ? Vec4::Normalize3(direction) :
@@ -883,26 +887,33 @@ Vec4 CCGWorkView::CalculateShading(LightParams * lights, Material * material, Ve
 			}
 
 			// Diffuse calculation
-			diffuse += intensity * material->Kd * max(Vec4::Dot3(-normal, -direction), 0.0);
+			Vec4 diffuseCoeff = material->Kd * max(Vec4::Dot3(-normal, -direction), 0.0);
+			diffuse += intensity * diffuseCoeff;
 
 			// Specular calculation
 			Vec4 camDir = Vec4::Normalize3(camPos - pos);
 			Vec4 R = normal * 2;
 			R = R * max(Vec4::Dot3(-normal, -direction), 0.0);
 			R = R - direction;
-			R = -Vec4::Normalize3(R);
-			specular += intensity * material->Ks * pow(max(Vec4::Dot3(R, camDir), 0.0), material->Specular);
+			R = Vec4::Normalize3(R);
+			Vec4 specularCoeff = material->Ks * pow(max(Vec4::Dot3(R, camDir), 0.0), material->Specular);
+			specular += intensity * specularCoeff;
 
 			double distance = Vec4::Distance3(pos, lightPos);
 			if (lights[i].Type != LIGHT_TYPE_DIRECTIONAL)
 			{
-				diffuse /= distance;
-				specular /= distance;
+				//diffuse /= distance;
+				//specular /= distance;
 			}
+
+			if (specular[0] > 0.7)
+				int t = 7;
 		}
 	}
 
-	return ambient + diffuse + specular;
+	Vec4 objectColor =  Vec4(GetRValue(color) / 255.0, GetGValue(color) / 255.0, GetBValue(color) / 255.0);
+	Vec4 sum = (ambient + diffuse) * objectColor + specular;
+	return Vec4(min(sum[0], 1.0), min(sum[1], 1.0), min(sum[2], 1.0));
 }
 
 BOOL CCGWorkView::OnEraseBkgnd(CDC* pDC) 
@@ -1043,20 +1054,20 @@ void CCGWorkView::OnDraw(CDC* pDC)
 						dVertex1.Z = clipped1[2];
 						dVertex1.NormalVS = normal1 * transform * camTransform;
 						// Calculate color
-						double r = ((GetRValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex1.PosVS, dVertex1.NormalVS))[0]) * 255.0;
-						double g = ((GetGValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex1.PosVS, dVertex1.NormalVS))[1]) * 255.0;
-						double b = ((GetBValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex1.PosVS, dVertex1.NormalVS))[2]) * 255.0;
-						dVertex1.Color = Vec4(r, g, b);
+						//double r = ((GetRValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex1.PosVS, dVertex1.NormalVS))[0]) * 255.0;
+						//double g = ((GetGValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex1.PosVS, dVertex1.NormalVS))[1]) * 255.0;
+						//double b = ((GetBValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex1.PosVS, dVertex1.NormalVS))[2]) * 255.0;
+						dVertex1.Color = CalculateShading(m_lights, model->GetMaterial(), dVertex1.PosVS, dVertex1.NormalVS, color) * 255.0;
 
 						dVertex2.Pixel = pix2;
 						dVertex2.PosVS = pos2 * transform * camTransform;
 						dVertex2.Z = clipped2[2];
 						dVertex2.NormalVS = normal2 * transform * camTransform;
 						// Calculate color
-						r = ((GetRValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex2.PosVS, dVertex2.NormalVS))[0]) * 255.0;
-						g = ((GetGValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex2.PosVS, dVertex2.NormalVS))[1]) * 255.0;
-						b = ((GetBValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex2.PosVS, dVertex2.NormalVS))[2]) * 255.0;
-						dVertex2.Color = Vec4(r, g, b);
+						//r = ((GetRValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex2.PosVS, dVertex2.NormalVS))[0]) * 255.0;
+						//g = ((GetGValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex2.PosVS, dVertex2.NormalVS))[1]) * 255.0;
+						//b = ((GetBValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex2.PosVS, dVertex2.NormalVS))[2]) * 255.0;
+						dVertex2.Color = CalculateShading(m_lights, model->GetMaterial(), dVertex2.PosVS, dVertex2.NormalVS, color) * 255.0;
 
 						// Construct poly for drawing
 						if (m_colorDialog.IsDiscoMode)

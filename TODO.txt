@@ -2,12 +2,6 @@ Todo List:
 
 -----------------------TODO----------------------------------
 
-
-
-3. connect the material dialog
-
-5.1 Add support to object space lighting.
-
 5. Calculate color according to lights and shading - test.
 
 
@@ -32,3 +26,5 @@ Untill
 1. In CGView.h need to add a vertex struct that will hold:
 	int x, int y, double z (after projection), Vec4 color, Vec4 normal (view space).
 The edge struct should hold Vertex instead of CPoint.
+3. connect the material dialog
+5.1 Add support to object space lighting.
