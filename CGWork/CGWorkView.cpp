@@ -104,6 +104,8 @@ BEGIN_MESSAGE_MAP(CCGWorkView, CView)
 	ON_UPDATE_COMMAND_UI(ID_BACKGROUND_REPEAT, &CCGWorkView::OnUpdateBackgroundRepeat)
 	ON_COMMAND(ID_BACKGROUND_OPEN, &CCGWorkView::OnBackgroundOpen)
 	ON_COMMAND(ID_LIGHT_SETMATERIAL, &CCGWorkView::OnLightSetmaterial)
+	ON_COMMAND(ID_LIGHT_SHADING_PHONG, &CCGWorkView::OnLightShadingPhong)
+	ON_UPDATE_COMMAND_UI(ID_LIGHT_SHADING_PHONG, &CCGWorkView::OnUpdateLightShadingPhong)
 END_MESSAGE_MAP()
 
 // A patch to fix GLaux disappearance from VS2005 to VS2008
@@ -260,6 +262,7 @@ struct Intersection {
 	double z;
 	Vec4 color;
 	Vec4 normal;
+	Vec4 pos;
 };
 
 class IntersectionsSorter
@@ -285,12 +288,13 @@ void CCGWorkView::ScanConvert(CDC* pDc, std::vector<Edge> poly, COLORREF color, 
 {
 	assert(poly.size() > 2);
 	Material m;
+	COLORREF objectColor = color;
 	if (m_nLightShading == ID_LIGHT_SHADING_FLAT)
 	{
 		// Calculate color
-		double r = (GetRValue(color) / 255.0) * (CalculateShading(m_lights, &m, polyCenter, polyNormal))[0];
-		double g = (GetGValue(color) / 255.0) * (CalculateShading(m_lights, &m, polyCenter, polyNormal))[1];
-		double b = (GetBValue(color) / 255.0) * (CalculateShading(m_lights, &m, polyCenter, polyNormal))[2];
+		double r = (GetRValue(objectColor) / 255.0) * (CalculateShading(m_lights, &m, polyCenter, polyNormal))[0];
+		double g = (GetGValue(objectColor) / 255.0) * (CalculateShading(m_lights, &m, polyCenter, polyNormal))[1];
+		double b = (GetBValue(objectColor) / 255.0) * (CalculateShading(m_lights, &m, polyCenter, polyNormal))[2];
 
 		color = RGB((int)(r * 255.0), (int)(g * 255.0), (int)(b * 255.0));
 	}
@@ -380,9 +384,21 @@ void CCGWorkView::ScanConvert(CDC* pDc, std::vector<Edge> poly, COLORREF color, 
 			double z = e.A.Z - (e.A.Z - e.B.Z) * ((double)(e.A.Pixel.y - y) / (double)(e.A.Pixel.y - e.B.Pixel.y));
 			i.z = z;
 
-			// Caluclate RGB at intersections
-
-			// Calculate Normal at intersections
+			if (m_nLightShading == ID_LIGHT_SHADING_GOURAUD)
+			{
+				// Calculate Color at intersections
+				for (int j = 0; j < 3; j++)
+					i.color[j] = e.A.Color[j] - (e.A.Color[j] - e.B.Color[j]) * ((double)(e.A.Pixel.y - y) / (double)(e.A.Pixel.y - e.B.Pixel.y));
+			}
+			if (m_nLightShading == ID_LIGHT_SHADING_PHONG)
+			{
+				// Calculate Normal at intersections
+				for (int j = 0; j < 3; j++)
+				{
+					i.normal[j] = e.A.NormalVS[j] - (e.A.NormalVS[j] - e.B.NormalVS[j]) * ((double)(e.A.Pixel.y - y) / (double)(e.A.Pixel.y - e.B.Pixel.y));
+					i.pos[j] = e.A.PosVS[j] - (e.A.PosVS[j] - e.B.PosVS[j]) * ((double)(e.A.Pixel.y - y) / (double)(e.A.Pixel.y - e.B.Pixel.y));
+				}
+			}
 
 			intersections.push_back(i);
 		}
@@ -413,6 +429,24 @@ void CCGWorkView::ScanConvert(CDC* pDc, std::vector<Edge> poly, COLORREF color, 
 				break;
 			double z1 = intersections[i + 1].z;
 
+			// Get intersections RGB
+			Vec4 I0 = intersections[i].color;
+			if ((i + 1) >= intersections.size())
+				break;
+			Vec4 I1 = intersections[i + 1].color;
+
+			// Get intersections Normal
+			Vec4 n0 = intersections[i].normal;
+			if ((i + 1) >= intersections.size())
+				break;
+			Vec4 n1 = intersections[i + 1].normal;
+
+			// Get intersections Pos
+			Vec4 v0 = intersections[i].pos;
+			if ((i + 1) >= intersections.size())
+				break;
+			Vec4 v1 = intersections[i + 1].pos;
+
 			int x = x0;
 			while (x <= x1)
 			{
@@ -420,7 +454,21 @@ void CCGWorkView::ScanConvert(CDC* pDc, std::vector<Edge> poly, COLORREF color, 
 				double zp = z1 - (z1 - z0) * ((double)(x1 - x) / (double)(x1 - x0));
 
 				// Calcualte RGB at (x, y) according to shading
-
+				if (m_nLightShading == ID_LIGHT_SHADING_GOURAUD)
+				{
+					Vec4 colorVec = I1 - (I1 - I0) * ((double)(x1 - x) / (double)(x1 - x0));
+					color = RGB((int)colorVec[0], (int)colorVec[1], (int)colorVec[2]);
+				}
+				if (m_nLightShading == ID_LIGHT_SHADING_PHONG)
+				{
+					Vec4 normal = n1 - (n1 - n0) * ((double)(x1 - x) / (double)(x1 - x0));
+					Vec4 pos = v1 - (v1 - v0) * ((double)(x1 - x) / (double)(x1 - x0));
+					// Calculate color
+					double r = (GetRValue(objectColor) / 255.0) * (CalculateShading(m_lights, &m, pos, normal))[0];
+					double g = (GetGValue(objectColor) / 255.0) * (CalculateShading(m_lights, &m, pos, normal))[1];
+					double b = (GetBValue(objectColor) / 255.0) * (CalculateShading(m_lights, &m, pos, normal))[2];
+					color = RGB((int)(r * 255.0), (int)(g * 255.0), (int)(b * 255.0));
+				}
 				// Compare z Pos to zBuffer, if z Pos > zBuffer,
 				// Draw and update z buffer
 				int index = min(x + m_WindowWidth * y, m_WindowWidth * m_WindowHeight - 1);
@@ -820,22 +868,39 @@ Vec4 CCGWorkView::CalculateShading(LightParams * lights, Material * material, Ve
 			Vec4 direction(lights[i].DirX, lights[i].DirY, lights[i].DirZ);
 
 			// normalize everything
-			direction = Vec4::Normalize3(direction);
+			direction = (lights[i].Type == LIGHT_TYPE_DIRECTIONAL) ? Vec4::Normalize3(direction) :
+				Vec4::Normalize3(pos - lightPos);
 			normal = Vec4::Normalize3(normal);
 
-			if (lights[i].Type == LIGHT_TYPE_DIRECTIONAL)
+			Vec4 camPos(0.0);
+			if (!m_bIsPerspective)
 			{
-				diffuse += intensity * material->Kd * max(Vec4::Dot3(normal, direction), 0.0);
+				camPos[2] = 1.0;
 			}
-			else
+
+			// Diffuse calculation
+			diffuse += intensity * material->Kd * max(Vec4::Dot3(-normal, -direction), 0.0);
+
+			// Specular calculation
+			Vec4 camDir = Vec4::Normalize3(camPos - pos);
+			Vec4 R = normal * 2;
+			R = R * max(Vec4::Dot3(-normal, -direction), 0.0);
+			R = R - direction;
+			R = -Vec4::Normalize3(R);
+			specular += intensity * material->kS * pow(max(Vec4::Dot3(R, camDir), 0.0), material->Specular);
+			//specular += intensity * material->kS;
+
+
+			double distance = Vec4::Distance3(pos, lightPos);
+			if (lights[i].Type != LIGHT_TYPE_DIRECTIONAL)
 			{
-				double distance = Vec4::Distance3(pos, lightPos);
-				diffuse += intensity * material->Kd * max(Vec4::Dot3(normal, Vec4::Normalize3(pos - lightPos)), 0.0) / distance;
+				//diffuse /= distance;
+				//specular /= distance;
 			}
 		}
 	}
 
-	return ambient + diffuse;
+	return ambient + diffuse + specular;
 }
 
 BOOL CCGWorkView::OnEraseBkgnd(CDC* pDC) 
@@ -972,11 +1037,21 @@ void CCGWorkView::OnDraw(CDC* pDC)
 					dVertex1.PosVS = pos1 * transform * camTransform;
 					dVertex1.Z = clipped1[2];
 					dVertex1.NormalVS = normal1 * transform * camTransform;
+					// Calculate color
+					double r = ((GetRValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex1.PosVS, dVertex1.NormalVS))[0]) * 255.0;
+					double g = ((GetGValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex1.PosVS, dVertex1.NormalVS))[1]) * 255.0;
+					double b = ((GetBValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex1.PosVS, dVertex1.NormalVS))[2]) * 255.0;
+					dVertex1.Color = Vec4(r, g, b);
 
 					dVertex2.Pixel = pix2;
 					dVertex2.PosVS = pos2 * transform * camTransform;
 					dVertex2.Z = clipped2[2];
 					dVertex2.NormalVS = normal2 * transform * camTransform;
+					// Calculate color
+					r = ((GetRValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex2.PosVS, dVertex2.NormalVS))[0]) * 255.0;
+					g = ((GetGValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex2.PosVS, dVertex2.NormalVS))[1]) * 255.0;
+					b = ((GetBValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex2.PosVS, dVertex2.NormalVS))[2]) * 255.0;
+					dVertex2.Color = Vec4(r, g, b);
 
 					// Construct poly for drawing
 					if (m_colorDialog.IsDiscoMode)
@@ -1295,6 +1370,17 @@ void CCGWorkView::OnLightShadingGouraud()
 void CCGWorkView::OnUpdateLightShadingGouraud(CCmdUI* pCmdUI) 
 {
 	pCmdUI->SetCheck(m_nLightShading == ID_LIGHT_SHADING_GOURAUD);
+}
+
+void CCGWorkView::OnLightShadingPhong()
+{
+	m_nLightShading = ID_LIGHT_SHADING_PHONG;
+}
+
+
+void CCGWorkView::OnUpdateLightShadingPhong(CCmdUI *pCmdUI)
+{
+	pCmdUI->SetCheck(m_nLightShading == ID_LIGHT_SHADING_PHONG);
 }
 
 // LIGHT SETUP HANDLER ///////////////////////////////////////////
@@ -1637,6 +1723,18 @@ void CCGWorkView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		showGeos = !showGeos;
 	if (nChar == 0x45) // E key
 		aroundEye = !aroundEye;
+	if (nChar == 0x44) // D key
+		m_colorDialog.IsDiscoMode = !m_colorDialog.IsDiscoMode;
+	if (nChar == 0x57) // W key
+		currentPolySelection = WIREFRAME;
+	if (nChar == 0x53) // S key
+		currentPolySelection = SOLID_SCREEN;
+	if (nChar == 0x31) // 1 key
+		m_nLightShading = ID_LIGHT_SHADING_FLAT;
+	if (nChar == 0x32) // 2 key
+		m_nLightShading = ID_LIGHT_SHADING_GOURAUD;
+	if (nChar == 0x33) // 3 key
+		m_nLightShading = ID_LIGHT_SHADING_PHONG;
 
 	CView::OnKeyDown(nChar, nRepCnt, nFlags);
 }

@@ -32,6 +32,7 @@ struct DVertex
 	double Z;
 	Vec4 PosVS;
 	Vec4 NormalVS;
+	Vec4 Color;
 };
 
 struct Edge {
@@ -246,6 +247,8 @@ public:
 	afx_msg void OnUpdateBackgroundRepeat(CCmdUI *pCmdUI);
 	afx_msg void OnBackgroundOpen();
 	afx_msg void OnLightSetmaterial();
+	afx_msg void OnLightShadingPhong();
+	afx_msg void OnUpdateLightShadingPhong(CCmdUI *pCmdUI);
 };
 
 #ifndef _DEBUG  // debug version in CGWorkView.cpp

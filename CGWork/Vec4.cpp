@@ -133,9 +133,7 @@ Vec4 & Vec4::operator*=(const Mat4 & m)
 
 Vec4 Vec4::operator/(double c) const
 {
-	//assert(c != 0);
-	if (abs(c) < AL_DBL_EPSILON)
-		int t = 7;
+	assert(c != 0);
 	return *this * (1.0 / c);
 }
 
