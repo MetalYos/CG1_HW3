@@ -53,6 +53,16 @@ void Geometry::AddVertex(Vertex* v)
 void Geometry::AddPolygon(Poly * p)
 {
 	Polygons.push_back(p);
+
+	// Calculate center
+	if (p->Vertices.size() > 0)
+	{
+		for (Vertex* v : p->Vertices)
+		{
+			p->Center += v->Pos;
+		}
+		p->Center /= p->Vertices.size();
+	}
 	
 	// Build and add Edges
 	for (unsigned int i = 0; i < p->Vertices.size(); i++)

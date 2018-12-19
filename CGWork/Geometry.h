@@ -42,6 +42,7 @@ struct Poly
 	std::vector<Vertex*> Vertices;
 	Vec4 Normal;
 	Vec4 CalcNormal;
+	Vec4 Center;
 	bool IsSelected;
 	// TODO: if needed, add a vector of Edges
 

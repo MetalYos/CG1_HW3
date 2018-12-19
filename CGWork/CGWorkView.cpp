@@ -149,7 +149,7 @@ CCGWorkView::CCGWorkView()
 	m_sensitivity = Vec4(100, 100, 300);
 	orthoHeight = 5.0;
 	m_nCoordSpace = ID_BUTTON_VIEW;
-	normalSizeFactor = 0.1;
+	normalSizeFactor = 0.5;
 	showGeos = true;
 	aroundEye = true;
 	currentPolySelection = WIREFRAME;
@@ -576,10 +576,128 @@ void CCGWorkView::DrawBoundingBox(CDC * pDC, const std::vector<Poly*>& polys, co
 			CPoint pix1((int)pix1Vec[0], (int)pix1Vec[1]);
 			CPoint pix2((int)pix2Vec[0], (int)pix2Vec[1]);
 
-			poly.push_back({ { pix1, clipped1[2] }, { pix2, clipped2[2] } , color });
+			DVertex dv1, dv2;
+			dv1.Pixel = pix1;
+			dv2.Pixel = pix2;
+
+			poly.push_back({ dv1, dv2 , color });
 		}
 
 		DrawPoly(pDC, poly);
+	}
+}
+
+void CCGWorkView::DrawVertexNormal(CDC * pDC, const Vertex * v, const Mat4 & modelTransform,
+	const Mat4 & normalTransform, const Mat4 & camTransform, const Mat4 & projection, 
+	const Mat4 & toView, COLORREF color)
+{
+	// Transform vertex position to view space
+	Vec4 startPos = v->Pos * modelTransform * camTransform;
+	
+	// Transform normal to view space
+	Vec4 normal = Scene::GetInstance().GetCalcNormalState() ?
+		v->CalcNormal : v->Normal;
+	normal = normal * normalTransform * camTransform;
+	normal = Vec4::Normalize3(normal);
+
+	// Calculate endPos
+	Vec4 endPos = startPos + normal * normalSizeFactor;
+
+	// Transform Start and End Pos to screen space
+	startPos = startPos * projection;
+	startPos /= startPos[3];
+	startPos = startPos * toView;
+
+	endPos = endPos * projection;
+	endPos /= endPos[3];
+	endPos = endPos * toView;
+
+	// Draw normal
+	CPoint startPosPix((int)startPos[0], (int)startPos[1]);
+	CPoint endPosPix((int)endPos[0], (int)endPos[1]);
+	DrawLine(pDC, color, startPosPix, endPosPix);
+}
+
+void CCGWorkView::DrawPolyNormal(CDC * pDC, const Poly * p, const Mat4 & modelTransform, 
+	const Mat4 & normalTransform, const Mat4 & camTransform, const Mat4 & projection, 
+	const Mat4 & toView, COLORREF color)
+{
+	// Transform poly center position to view space
+	Vec4 polyCenter = p->Center * modelTransform * camTransform;
+
+	// Transform normal to view space
+	Vec4 normal = Scene::GetInstance().GetCalcNormalState() ?
+		p->CalcNormal : p->Normal;
+	normal = normal * normalTransform * camTransform;
+	normal = Vec4::Normalize3(normal);
+
+	// Calculate endPos
+	Vec4 endPos = polyCenter + normal * normalSizeFactor;
+
+	// Transform PolyCenter and End Pos to screen space
+	polyCenter = polyCenter * projection;
+	polyCenter /= polyCenter[3];
+	polyCenter = polyCenter * toView;
+
+	endPos = endPos * projection;
+	endPos /= endPos[3];
+	endPos = endPos * toView;
+
+	// Basic Z clipping
+	if (IsClippedZ(polyCenter, polyCenter))
+		return;
+
+	// Draw normal
+	CPoint polyCenterPix((int)polyCenter[0], (int)polyCenter[1]);
+	CPoint endPosPix((int)endPos[0], (int)endPos[1]);
+	DrawLine(pDC, color, polyCenterPix, endPosPix);
+}
+
+void CCGWorkView::DrawBackground(CDC* pDC, CRect r)
+{
+	if (currentPolySelection != WIREFRAME && isBGFileOpen) {
+
+		CT2A BG(BGFile);
+		PngWrapper pngReadFile(BG);
+		pngReadFile.ReadPng();
+
+		if (isBGStretch) {
+			// Scale factors
+			double cx = (double)m_WindowWidth / (double)pngReadFile.GetWidth();
+			double cy = (double)m_WindowHeight / (double)pngReadFile.GetHeight();
+
+			for (int x = 0; x < m_WindowWidth; x++) {
+				for (int y = 0; y < m_WindowHeight; y++) {
+					// Calculate position in image
+					double v = x / cx;
+					double w = y / cy;
+
+					// Pick the nearest neighbor to (v,w)
+					int c = pngReadFile.GetValue((int)round(v), (int)round(w));
+					int r = GET_R(c);
+					int g = GET_G(c);
+					int b = GET_B(c);
+					pDC->SetPixel(x, y, RGB(r, g, b));
+				}
+			}
+		}
+		else {
+			for (int x = 0; x < m_WindowWidth; x++) {
+				for (int y = 0; y < m_WindowHeight; y++) {
+					//TODO check for grayscale
+					int c = pngReadFile.GetValue(x % pngReadFile.GetWidth(), y % pngReadFile.GetHeight());
+					int r = GET_R(c);
+					int g = GET_G(c);
+					int b = GET_B(c);
+
+					pDC->SetPixel(x, y, RGB(r, g, b));
+				}
+			}
+		}
+	}
+	else {
+		COLORREF bGColorRef = m_colorDialog.BackgroundColor;
+		pDC->FillSolidRect(&r, bGColorRef);
 	}
 }
 
@@ -778,52 +896,8 @@ void CCGWorkView::OnDraw(CDC* pDC)
 	for (int i = 0; i < bufferSize; i++)
 		zBuffer[i] = -DBL_MAX;
 
-	//TODO BACKGROUND DRAWING
-	//todo flag isIMageLoaded
-	if (currentPolySelection != WIREFRAME && isBGFileOpen) {
-
-		CT2A BG(BGFile);
-		PngWrapper pngReadFile(BG);
-		pngReadFile.ReadPng();
-
-		if (isBGStretch) {
-			// Scale factors
-			double cx = (double)r.Width() / (double)pngReadFile.GetWidth();
-			double cy = (double)r.Height() / (double)pngReadFile.GetHeight();
-			
-			for (int x = 0; x < r.Width(); x++) {
-				for (int y = 0; y < r.Height(); y++) {
-					// Calculate position in image
-					double v = x / cx;
-					double w = y / cy;
-
-					// Pick the nearest neighbor to (v,w)
-					int c = pngReadFile.GetValue((int)round(v), (int)round(w));
-					int r = GET_R(c);
-					int g = GET_G(c);
-					int b = GET_B(c);
-					pDCToUse->SetPixel(x, y, RGB(r, g, b));
-				}
-			}
-		}
-		else {
-			for (int x = 0; x < r.Width(); x++) {
-				for (int y = 0; y < r.Height(); y++) {
-					//TODO check for grayscale
-					int c = pngReadFile.GetValue(x % pngReadFile.GetWidth(), y % pngReadFile.GetHeight());
-					int r = GET_R(c);
-					int g = GET_G(c);
-					int b = GET_B(c);
-
-					pDCToUse->SetPixel(x, y, RGB(r, g, b));
-				}
-			}
-		}
-	}
-	else {
-		COLORREF bGColorRef = m_colorDialog.BackgroundColor;
-		pDCToUse->FillSolidRect(&r, bGColorRef);
-	}
+	// Background Drawing
+	DrawBackground(pDCToUse, r);
 	
 	std::vector<Model*> models = Scene::GetInstance().GetModels();
 	Camera* camera = Scene::GetInstance().GetCamera();
@@ -884,25 +958,36 @@ void CCGWorkView::OnDraw(CDC* pDC)
 					// Contruct poly for mouse selection test
 					polyEdges.push_back({ pix1Vec, pix2Vec });
 
+					// Initialize vertex for drawing
+					DVertex dVertex1, dVertex2;
+
+					Vec4 normal1 = Scene::GetInstance().GetCalcNormalState() ?
+						p->Vertices[i]->CalcNormal : p->Vertices[i]->Normal;
+					Vec4 normal2 = Scene::GetInstance().GetCalcNormalState() ?
+						p->Vertices[(i + 1) % p->Vertices.size()]->CalcNormal : 
+						p->Vertices[(i + 1) % p->Vertices.size()]->Normal;
+
+					// Save parameters in DVertex
+					dVertex1.Pixel = pix1;
+					dVertex1.PosVS = pos1 * transform * camTransform;
+					dVertex1.Z = clipped1[2];
+					dVertex1.NormalVS = normal1 * transform * camTransform;
+
+					dVertex2.Pixel = pix2;
+					dVertex2.PosVS = pos2 * transform * camTransform;
+					dVertex2.Z = clipped2[2];
+					dVertex2.NormalVS = normal2 * transform * camTransform;
+
 					// Construct poly for drawing
 					if (m_colorDialog.IsDiscoMode)
 						color = AL_RAINBOW_CREF;
-					poly.push_back({ { pix1, clipped1[2] }, { pix2, clipped2[2] } , color });
+					poly.push_back({ dVertex1, dVertex2 , color });
 
 					// Draw vertex normal if needed
 					if (Scene::GetInstance().AreVertexNormalsOn())
 					{
-						Vec4 normal = Scene::GetInstance().GetCalcNormalState() ?
-							p->Vertices[i]->CalcNormal : p->Vertices[i]->Normal;
-						normal = normal * transform * camTransform * projection;
-						normal = Vec4::Normalize3(normal);
-
-						normal = clipped1 + normal * normalSizeFactor;
-
-						normal = normal * toView;
-						CPoint nPix2((int)normal[0], (int)normal[1]);
-
-						DrawLine(pDCToUse, normalColor, pix1, nPix2);
+						DrawVertexNormal(pDCToUse, p->Vertices[i], transform, normalTransform,
+							camTransform, projection, toView, normalColor);
 					}
 				}
 				// Calculate poly center
@@ -932,25 +1017,8 @@ void CCGWorkView::OnDraw(CDC* pDC)
 				// Draw poly normal if needed
 				if (Scene::GetInstance().ArePolyNormalsOn())
 				{
-					polyCenter = polyCenter * projection;
-					normal = normal * projection;
-					normal = Vec4::Normalize3(normal);
-
-					polyCenter /= polyCenter[3];
-					
-					// Basic Z clipping
-					if (IsClippedZ(polyCenter, polyCenter))
-						continue;
-
-					normal = polyCenter + normal * normalSizeFactor;
-
-					polyCenter = polyCenter * toView;
-					normal = normal * toView;
-
-					CPoint polyCenterPix((int)polyCenter[0], (int)polyCenter[1]);
-					CPoint polyNormPix((int)normal[0], (int)normal[1]);
-
-					DrawLine(pDCToUse, normalColor, polyCenterPix, polyNormPix);
+					DrawPolyNormal(pDCToUse, p, transform, normalTransform,
+						camTransform, projection, toView, normalColor);
 				}
 			}
 

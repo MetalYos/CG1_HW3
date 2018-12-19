@@ -30,8 +30,8 @@ struct DVertex
 {
 	CPoint Pixel;
 	double Z;
-	//Vec4 Color;
-	//Vec4 Normal;
+	Vec4 PosVS;
+	Vec4 NormalVS;
 };
 
 struct Edge {
@@ -123,6 +123,13 @@ private:
 	void DrawSelectedPolys(CDC* pDC);
 	void DrawBoundingBox(CDC* pDC, const std::vector<Poly*>& polys, const Mat4& modelTransform,
 		const Mat4& camTransform, const Mat4& projection, const Mat4& toView, COLORREF color);
+	void DrawVertexNormal(CDC* pDC, const Vertex* v, const Mat4& modelTransform, 
+		const Mat4 & normalTransform, const Mat4& camTransform, const Mat4& projection, 
+		const Mat4& toView, COLORREF color);
+	void DrawPolyNormal(CDC* pDC, const Poly* p, const Mat4& modelTransform,
+		const Mat4 & normalTransform, const Mat4& camTransform, const Mat4& projection,
+		const Mat4& toView, COLORREF color);
+	void DrawBackground(CDC* pDC, CRect r);
 	bool IsClippedZ(const Vec4& p1, const Vec4& p2);
 
 	//Dialogs
