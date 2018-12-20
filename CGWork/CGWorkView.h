@@ -80,12 +80,10 @@ private:
 	// Zbuffer array (screenWidth * screenHeight)
 	double* zBuffer;
 
-	// Orthographic projection height
-	double orthoHeight;
-	// BBOX parameters
+	double orthoHeight;		// Orthographic projection height
 	bool isBBoxOn;
-	// Color dialog flag
 	bool isCColorDialogOpen;
+	bool isBFCulling;
 	
 	// Mouse parameters
 	bool mouseClicked;
@@ -115,6 +113,7 @@ private:
 
 	// Quick hack
 	std::vector< std::vector<Edge> > selectedPolys;
+	std::vector<Edge> silhouetteEdges;
 
 	// Drawing functions
 	int GetOctant(CPoint a, CPoint b);
@@ -167,9 +166,8 @@ protected:
 	BOOL InitializeCGWork();
 	BOOL SetupViewingFrustum(void);
 	BOOL SetupViewingOrthoConstAspect(void);
-
 	Vec4 CalculateShading(LightParams* lights, Material* material, Vec4 pos, Vec4 normal, COLORREF color);
-
+	bool IsBackFace(const Poly* p, const Mat4& modelTransform, const Mat4& normalTransform, const Mat4& camTransform);
 	virtual void RenderScene();
 
 
@@ -251,6 +249,7 @@ public:
 	afx_msg void OnLightSetmaterial();
 	afx_msg void OnLightShadingPhong();
 	afx_msg void OnUpdateLightShadingPhong(CCmdUI *pCmdUI);
+	afx_msg void OnButtonBculling();
 };
 
 #ifndef _DEBUG  // debug version in CGWorkView.cpp

@@ -106,6 +106,7 @@ BEGIN_MESSAGE_MAP(CCGWorkView, CView)
 	ON_COMMAND(ID_LIGHT_SETMATERIAL, &CCGWorkView::OnLightSetmaterial)
 	ON_COMMAND(ID_LIGHT_SHADING_PHONG, &CCGWorkView::OnLightShadingPhong)
 	ON_UPDATE_COMMAND_UI(ID_LIGHT_SHADING_PHONG, &CCGWorkView::OnUpdateLightShadingPhong)
+	ON_COMMAND(ID_BUTTON_BCULLING, &CCGWorkView::OnButtonBculling)
 END_MESSAGE_MAP()
 
 // A patch to fix GLaux disappearance from VS2005 to VS2008
@@ -161,6 +162,7 @@ CCGWorkView::CCGWorkView()
 	isBGStretch = false;
 	isBGFileOpen = false;
 	isModelLoaded = false;
+	isBFCulling = false;
 }
 
 CCGWorkView::~CCGWorkView()
@@ -857,6 +859,7 @@ Vec4 CCGWorkView::CalculateShading(LightParams* lights, Material* material, Vec4
 	Vec4 ambient = (Vec4(m_ambientLight.ColorR, m_ambientLight.ColorG, m_ambientLight.ColorB) / 255.0) * material->Ka;
 	Vec4 diffuse;
 	Vec4 specular;
+	int numEnabledLights = 0;
 	for (int i = 0; i < MAX_LIGHT; i++)
 	{
 		if (lights[i].Enabled)
@@ -865,11 +868,10 @@ Vec4 CCGWorkView::CalculateShading(LightParams* lights, Material* material, Vec4
 			Vec4 direction(lights[i].DirX, lights[i].DirY, lights[i].DirZ);
 			if (lights[i].Space == LIGHT_SPACE_LOCAL)
 			{
-				Mat4 modelTransform = Scene::GetInstance().GetModels().back()->GetTransform();
 				Mat4 camTransform = Scene::GetInstance().GetCamera()->GetTranform();
 
-				lightPos = lightPos * modelTransform * camTransform;
-				direction = direction * modelTransform * camTransform;
+				lightPos = lightPos * camTransform;
+				direction = direction * camTransform;
 			}
 
 			Vec4 intensity(lights[i].ColorR, lights[i].ColorG, lights[i].ColorB);
@@ -906,14 +908,43 @@ Vec4 CCGWorkView::CalculateShading(LightParams* lights, Material* material, Vec4
 				//specular /= distance;
 			}
 
-			if (specular[0] > 0.7)
-				int t = 7;
+			numEnabledLights++;
 		}
 	}
+
+	// Normalize diffuse and specular by number of lights
+	/*
+	if (numEnabledLights > 0)
+	{
+		diffuse /= numEnabledLights;
+		specular /= numEnabledLights;
+	}
+	*/
 
 	Vec4 objectColor =  Vec4(GetRValue(color) / 255.0, GetGValue(color) / 255.0, GetBValue(color) / 255.0);
 	Vec4 sum = (ambient + diffuse) * objectColor + specular;
 	return Vec4(min(sum[0], 1.0), min(sum[1], 1.0), min(sum[2], 1.0));
+}
+
+bool CCGWorkView::IsBackFace(const Poly* p, const Mat4& modelTransform, const Mat4& normalTransform, const Mat4& camTransform)
+{
+	Mat4 projection = Scene::GetInstance().GetCamera()->GetProjection();
+	Vec4 normal = Scene::GetInstance().GetCalcNormalState() ?
+		p->CalcNormal : p->Normal;
+
+	// Transform normal and poly center to View Space
+	normal = Vec4::Normalize3(normal * normalTransform * camTransform);
+	Vec4 center = p->Center * modelTransform * camTransform;
+
+	if (m_bIsPerspective)
+	{
+		if (Vec4::Dot3(center, normal) > 0)
+			return true;
+		return false;
+	}
+
+	normal = Vec4::Normalize3(normal * projection);
+	return normal[2] < 0;
 }
 
 BOOL CCGWorkView::OnEraseBkgnd(CDC* pDC) 
@@ -1009,13 +1040,16 @@ void CCGWorkView::OnDraw(CDC* pDC)
 				{
 					std::vector<Edge> poly;
 					std::vector<Vec4Line> polyEdges;
-					Vec4 polyCenter;
+
+					// Check Backface culling, and draw only if it is front facing
+					if (isBFCulling && IsBackFace(p, transform, normalTransform, camTransform))
+						continue;
+
 					for (unsigned int i = 0; i < p->Vertices.size(); i++)
 					{
 						// Save vertices in object space
 						Vec4 pos1 = p->Vertices[i]->Pos;
 						Vec4 pos2 = p->Vertices[(i + 1) % p->Vertices.size()]->Pos;
-						polyCenter += pos1;
 
 						// Transform vertices from object space to normalized device coords
 						Vec4 clipped1 = pos1 * transform * camTransform * projection;
@@ -1054,9 +1088,6 @@ void CCGWorkView::OnDraw(CDC* pDC)
 						dVertex1.Z = clipped1[2];
 						dVertex1.NormalVS = normal1 * transform * camTransform;
 						// Calculate color
-						//double r = ((GetRValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex1.PosVS, dVertex1.NormalVS))[0]) * 255.0;
-						//double g = ((GetGValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex1.PosVS, dVertex1.NormalVS))[1]) * 255.0;
-						//double b = ((GetBValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex1.PosVS, dVertex1.NormalVS))[2]) * 255.0;
 						dVertex1.Color = CalculateShading(m_lights, model->GetMaterial(), dVertex1.PosVS, dVertex1.NormalVS, color) * 255.0;
 
 						dVertex2.Pixel = pix2;
@@ -1064,9 +1095,6 @@ void CCGWorkView::OnDraw(CDC* pDC)
 						dVertex2.Z = clipped2[2];
 						dVertex2.NormalVS = normal2 * transform * camTransform;
 						// Calculate color
-						//r = ((GetRValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex2.PosVS, dVertex2.NormalVS))[0]) * 255.0;
-						//g = ((GetGValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex2.PosVS, dVertex2.NormalVS))[1]) * 255.0;
-						//b = ((GetBValue(color) / 255.0) * (CalculateShading(m_lights, model->GetMaterial(), dVertex2.PosVS, dVertex2.NormalVS))[2]) * 255.0;
 						dVertex2.Color = CalculateShading(m_lights, model->GetMaterial(), dVertex2.PosVS, dVertex2.NormalVS, color) * 255.0;
 
 						// Construct poly for drawing
@@ -1081,8 +1109,6 @@ void CCGWorkView::OnDraw(CDC* pDC)
 								camTransform, projection, toView, normalColor);
 						}
 					}
-					// Calculate poly center
-					polyCenter /= p->Vertices.size();
 
 					// If mouse button was clicked in Select mode perform intersection caculation
 					if (mouseClicked)
@@ -1092,7 +1118,7 @@ void CCGWorkView::OnDraw(CDC* pDC)
 					if (p->IsSelected)
 						selectedPolys.push_back(poly);
 
-					polyCenter = polyCenter * transform * camTransform;
+					Vec4 polyCenter = p->Center * transform * camTransform;
 					Vec4 normal = Scene::GetInstance().GetCalcNormalState() ?
 						p->CalcNormal : p->Normal;
 					normal = normal * normalTransform * camTransform;
@@ -1123,6 +1149,7 @@ void CCGWorkView::OnDraw(CDC* pDC)
 			mouseClicked = false;
 			// Draw the selected polys in the end to make sure they are on top
 			DrawSelectedPolys(pDCToUse);
+			// Draw Siluohette if needed
 
 			// Draw Model Bounding Box if needed
 			if (Scene::GetInstance().GetBBoxState() && !showGeos)
@@ -1862,4 +1889,11 @@ void CCGWorkView::OnLightSetmaterial()
 
 		Invalidate();
 	}
+}
+
+
+void CCGWorkView::OnButtonBculling()
+{
+	isBFCulling = !isBFCulling;
+	Invalidate();
 }

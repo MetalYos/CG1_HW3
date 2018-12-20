@@ -7,7 +7,6 @@ Todo List:
 
 ------------Yossi-----------------------
 
-9. Backface culling.
 10. Silhouette highlighting
 
 
@@ -28,3 +27,4 @@ Untill
 The edge struct should hold Vertex instead of CPoint.
 3. connect the material dialog
 5.1 Add support to object space lighting.
+9. Backface culling.
