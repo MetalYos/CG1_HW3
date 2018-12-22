@@ -60,7 +60,7 @@ struct PolyEdge
 class PolyEdgeComparer
 {
 public:
-	bool operator()(const PolyEdge* u, const PolyEdge* v) const
+	bool operator()(PolyEdge const* u, PolyEdge const* v) const
 	{
 		/*/
 		bool result1 = false;
@@ -74,7 +74,9 @@ public:
 		return result1 || result2;
 		*/
 
-		return ((u->A == v->A) && (u->B == v->B)) || ((u->A == v->B) && (u->B == v->A));
+		bool result = ((u->A->Pos == v->A->Pos) && (u->B->Pos == v->B->Pos)) || 
+			((u->A->Pos == v->B->Pos) && (u->B->Pos == v->A->Pos));
+		return result;
 	}
 };
 
@@ -84,7 +86,8 @@ public:
 	std::size_t operator()(const PolyEdge* e) const
 	{
 		std::hash<double> hashVal;
-		return hashVal(e->A[0].Pos[0]);
+		Vec4 sum = e->A->Pos + e->B->Pos;
+		return hashVal(sum[0] + sum[1] + sum[2]);
 	}
 };
 

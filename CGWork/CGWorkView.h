@@ -84,6 +84,7 @@ private:
 	bool isBBoxOn;
 	bool isCColorDialogOpen;
 	bool isBFCulling;
+	bool showSil;
 	
 	// Mouse parameters
 	bool mouseClicked;
@@ -92,6 +93,7 @@ private:
 	
 	// Fine tuning parameters
 	double normalSizeFactor;
+	double normalSign;
 	bool showGeos;
 	bool aroundEye;
 	Vec4 m_sensitivity;
@@ -113,11 +115,10 @@ private:
 
 	// Quick hack
 	std::vector< std::vector<Edge> > selectedPolys;
-	std::vector<Edge> silhouetteEdges;
 
 	// Drawing functions
 	int GetOctant(CPoint a, CPoint b);
-	void DrawPointOctant(CDC * pDC, int x, int y, COLORREF color, const CPoint& origA, int oct);
+	void DrawPointOctant(CDC * pDC, int x, int y, COLORREF color, const CPoint& origA, int oct, int thickness = 0);
 	CPoint TranslateBToFirstOctant(const CPoint& a, const CPoint& b, int oct);
 	CPoint TranslatePointFrom8th(CPoint p, int oct);
 	CPoint TranslatePointTo8th(CPoint p, int oct);
@@ -132,7 +133,9 @@ private:
 		const Mat4 & normalTransform, const Mat4& camTransform, const Mat4& projection,
 		const Mat4& toView, COLORREF color);
 	void DrawBackground(CDC* pDC, CRect r);
-	bool IsClippedZ(const Vec4& p1, const Vec4& p2);
+	void DrawSilhouetteEdges(CDC * pDC, Geometry* geo, const Mat4 & modelTransform,
+		const Mat4 & normalTransform, const Mat4 & camTransform, const Mat4 & projection,
+		const Mat4 & toView, COLORREF color);
 
 	//Dialogs
 	CColorsDialog m_colorDialog; 
@@ -148,7 +151,7 @@ public:
 
 	virtual void OnDraw(CDC* pDC);  // overridden to draw this view
 	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
-	void DrawLine(CDC* pDC, COLORREF color, CPoint a, CPoint b);
+	void DrawLine(CDC* pDC, COLORREF color, CPoint a, CPoint b, int thickness = 0);
 	void DrawPoly(CDC* pDc, std::vector<Edge>);
 	void ScanConvert(CDC* pDc, std::vector<Edge> poly, COLORREF color, Vec4 polyCenter = Vec4(0.0), Vec4 polyNormal = Vec4(0.0));
 	protected:
@@ -168,6 +171,7 @@ protected:
 	BOOL SetupViewingOrthoConstAspect(void);
 	Vec4 CalculateShading(LightParams* lights, Material* material, Vec4 pos, Vec4 normal, COLORREF color);
 	bool IsBackFace(const Poly* p, const Mat4& modelTransform, const Mat4& normalTransform, const Mat4& camTransform);
+	bool IsSilhouetteEdge(const PolyEdge* e, const Mat4& modelTransform, const Mat4& normalTransform, const Mat4& camTransform);
 	virtual void RenderScene();
 
 
@@ -224,7 +228,8 @@ public:
 	afx_msg void OnUpdateButtonPolyNorm(CCmdUI *pCmdUI);
 	afx_msg void OnButtonColors();
 	afx_msg void OnNormalCalculated();
-	afx_msg void OnUpdateNormalCalculated(CCmdUI *pCmdUI); afx_msg void OnOptionsMousesensitivity();
+	//afx_msg void OnUpdateNormalCalculated(CCmdUI *pCmdUI); 
+	afx_msg void OnOptionsMousesensitivity();
 	afx_msg void OnOptionsTessellationtolerance();
 	afx_msg void OnNormalFromfile();
 	afx_msg void OnButtonView();
@@ -250,6 +255,8 @@ public:
 	afx_msg void OnLightShadingPhong();
 	afx_msg void OnUpdateLightShadingPhong(CCmdUI *pCmdUI);
 	afx_msg void OnButtonBculling();
+	afx_msg void OnButtonSil();
+	afx_msg void OnButtonInverseN();
 };
 
 #ifndef _DEBUG  // debug version in CGWorkView.cpp

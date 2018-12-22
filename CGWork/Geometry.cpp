@@ -75,9 +75,7 @@ void Geometry::AddPolygon(Poly * p)
 
 		auto it = Edges.find(edge);
 		if (it == Edges.end())
-		{
 			Edges.insert(edge);
-		}
 		else
 		{
 			(*it)->Polys.push_back(p);

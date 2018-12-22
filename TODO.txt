@@ -7,13 +7,10 @@ Todo List:
 
 ------------Yossi-----------------------
 
-10. Silhouette highlighting
-
 
 ------------BEN-----------------------
 
 6. Save to file. by default size
-7. Normal inverse.
 
 -----------------------DONE--------------------------------
 1. Solid fill rendering.
@@ -28,3 +25,5 @@ The edge struct should hold Vertex instead of CPoint.
 3. connect the material dialog
 5.1 Add support to object space lighting.
 9. Backface culling.
+7. Normal inverse.
+10. Silhouette highlighting

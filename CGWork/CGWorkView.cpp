@@ -107,6 +107,9 @@ BEGIN_MESSAGE_MAP(CCGWorkView, CView)
 	ON_COMMAND(ID_LIGHT_SHADING_PHONG, &CCGWorkView::OnLightShadingPhong)
 	ON_UPDATE_COMMAND_UI(ID_LIGHT_SHADING_PHONG, &CCGWorkView::OnUpdateLightShadingPhong)
 	ON_COMMAND(ID_BUTTON_BCULLING, &CCGWorkView::OnButtonBculling)
+	ON_COMMAND(ID_BUTTON_SIL, &CCGWorkView::OnButtonSil)
+//	ON_UPDATE_COMMAND_UI(ID_BUTTON_SIL, &CCGWorkView::OnUpdateButtonSil)
+ON_COMMAND(ID_BUTTON_INVERSE_N, &CCGWorkView::OnButtonInverseN)
 END_MESSAGE_MAP()
 
 // A patch to fix GLaux disappearance from VS2005 to VS2008
@@ -163,6 +166,8 @@ CCGWorkView::CCGWorkView()
 	isBGFileOpen = false;
 	isModelLoaded = false;
 	isBFCulling = false;
+	showSil = false;
+	normalSign = 1.0;
 }
 
 CCGWorkView::~CCGWorkView()
@@ -209,7 +214,7 @@ BOOL CCGWorkView::PreCreateWindow(CREATESTRUCT& cs)
 	return CView::PreCreateWindow(cs);
 }
 
-void CCGWorkView::DrawLine(CDC * pDC, COLORREF color, CPoint a, CPoint b)
+void CCGWorkView::DrawLine(CDC * pDC, COLORREF color, CPoint a, CPoint b, int thickness)
 {
 	int oct = GetOctant(a, b);
 	b = TranslateBToFirstOctant(a, b, oct);
@@ -222,7 +227,7 @@ void CCGWorkView::DrawLine(CDC * pDC, COLORREF color, CPoint a, CPoint b)
 	d = 2 * dy - dx;
 	De = 2 * dy;
 	Dne = 2 * (dy - dx);
-	DrawPointOctant(pDC, x, y, color, a, oct);
+	DrawPointOctant(pDC, x, y, color, a, oct, thickness);
 	while (x < b.x) {
 		if (d < 0) {
 			d += De;
@@ -233,7 +238,7 @@ void CCGWorkView::DrawLine(CDC * pDC, COLORREF color, CPoint a, CPoint b)
 			x++;
 			y++;
 		}
-		DrawPointOctant(pDC, x, y, color, a, oct);
+		DrawPointOctant(pDC, x, y, color, a, oct, thickness);
 	}
 }
 
@@ -522,13 +527,44 @@ int CCGWorkView::GetOctant(CPoint a, CPoint b)
 	}
 }
 
-void CCGWorkView::DrawPointOctant(CDC * pDC, int x, int y, COLORREF color, const CPoint& origA, int oct)
+void CCGWorkView::DrawPointOctant(CDC * pDC, int x, int y, COLORREF color, const CPoint& origA, int oct, int thickness)
 {
 	CPoint normalized = CPoint(x - origA.x, y - origA.y);
 	CPoint transformed = TranslatePointFrom8th(normalized, oct);
 	CPoint actualPoint = origA + transformed;
 
-	pDC->SetPixel(actualPoint, color);
+	if (thickness == 0)
+		pDC->SetPixel(actualPoint, color);
+	else
+	{
+		// Draw thickness
+		int startX = actualPoint.x;
+		int endX = actualPoint.x;
+		int startY = actualPoint.y;
+		int endY = actualPoint.y;
+		for (int i = thickness; i > 0; i--)
+		{
+			if ((startX == actualPoint.x) && (actualPoint.x - i >= 0))
+				startX = actualPoint.x - i;
+			if ((endX == actualPoint.x) && (actualPoint.x + i < m_WindowWidth))
+				endX = actualPoint.x + i;
+			if ((startY == actualPoint.y) && (actualPoint.y - i >= 0))
+				startY = actualPoint.y - i;
+			if ((endY == actualPoint.y) && (actualPoint.y + i < m_WindowHeight))
+				endY = actualPoint.y + i;
+		}
+
+		CPoint pix;
+		for (int x = startX; x <= endX; x++)
+		{
+			for (int y = startY; y <= endY; y++)
+			{
+				pix.x = x;
+				pix.y = y;
+				pDC->SetPixel(pix, color);
+			}
+		}
+	}
 }
 
 CPoint CCGWorkView::TranslateBToFirstOctant(const CPoint & a, const CPoint & b, int oct)
@@ -615,10 +651,6 @@ void CCGWorkView::DrawBoundingBox(CDC * pDC, const std::vector<Poly*>& polys, co
 			clipped1 /= clipped1[3];
 			clipped2 /= clipped2[3];
 
-			// Basic Z clipping
-			if (IsClippedZ(clipped1, clipped2))
-				continue;
-
 			Vec4 pix1Vec(clipped1 * toView);
 			Vec4 pix2Vec(clipped2 * toView);
 
@@ -646,6 +678,7 @@ void CCGWorkView::DrawVertexNormal(CDC * pDC, const Vertex * v, const Mat4 & mod
 	// Transform normal to view space
 	Vec4 normal = Scene::GetInstance().GetCalcNormalState() ?
 		v->CalcNormal : v->Normal;
+	normal *= normalSign;
 	normal = normal * normalTransform * camTransform;
 	normal = Vec4::Normalize3(normal);
 
@@ -677,6 +710,7 @@ void CCGWorkView::DrawPolyNormal(CDC * pDC, const Poly * p, const Mat4 & modelTr
 	// Transform normal to view space
 	Vec4 normal = Scene::GetInstance().GetCalcNormalState() ?
 		p->CalcNormal : p->Normal;
+	normal *= normalSign;
 	normal = normal * normalTransform * camTransform;
 	normal = Vec4::Normalize3(normal);
 
@@ -691,10 +725,6 @@ void CCGWorkView::DrawPolyNormal(CDC * pDC, const Poly * p, const Mat4 & modelTr
 	endPos = endPos * projection;
 	endPos /= endPos[3];
 	endPos = endPos * toView;
-
-	// Basic Z clipping
-	if (IsClippedZ(polyCenter, polyCenter))
-		return;
 
 	// Draw normal
 	CPoint polyCenterPix((int)polyCenter[0], (int)polyCenter[1]);
@@ -750,19 +780,30 @@ void CCGWorkView::DrawBackground(CDC* pDC, CRect r)
 	}
 }
 
-bool CCGWorkView::IsClippedZ(const Vec4 & p1, const Vec4 & p2)
+void CCGWorkView::DrawSilhouetteEdges(CDC * pDC, Geometry* geo, const Mat4 & modelTransform,
+	const Mat4 & normalTransform, const Mat4 & camTransform, const Mat4 & projection,
+	const Mat4 & toView, COLORREF color)
 {
-	// Basic Z clipping (deactivated for now)
-	if ((p1[2] < -1.0 && p2[2] < -1.0) ||
-		(p1[2] > 1.0 && p2[2] > 1.0))
+	for (PolyEdge* e : geo->Edges)
 	{
-#ifdef D_PERSP
-		return false;
-#else
-		return true;
-#endif
+		if (IsSilhouetteEdge(e, modelTransform, normalTransform, camTransform))
+		{
+			// Transform from object space to projected space
+			Vec4 p1 = e->A->Pos * modelTransform * camTransform * projection;
+			Vec4 p2 = e->B->Pos * modelTransform * camTransform * projection;
+			p1 /= p1[3];
+			p2 /= p2[3];
+
+			// Transform to screen space
+			p1 = p1 * toView;
+			p2 = p2 * toView;
+
+			// Draw line
+			CPoint p1Pix((int)p1[0], (int)p1[1]);
+			CPoint p2Pix((int)p2[0], (int)p2[1]);
+			DrawLine(pDC, color, p1Pix, p2Pix, 2);
+		}
 	}
-	return false;
 }
 
 int CCGWorkView::OnCreate(LPCREATESTRUCT lpCreateStruct) 
@@ -774,7 +815,6 @@ int CCGWorkView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 
 	return 0;
 }
-
 
 // This method initialized the CGWork system.
 BOOL CCGWorkView::InitializeCGWork()
@@ -931,6 +971,7 @@ bool CCGWorkView::IsBackFace(const Poly* p, const Mat4& modelTransform, const Ma
 	Mat4 projection = Scene::GetInstance().GetCamera()->GetProjection();
 	Vec4 normal = Scene::GetInstance().GetCalcNormalState() ?
 		p->CalcNormal : p->Normal;
+	normal *= normalSign;
 
 	// Transform normal and poly center to View Space
 	normal = Vec4::Normalize3(normal * normalTransform * camTransform);
@@ -945,6 +986,16 @@ bool CCGWorkView::IsBackFace(const Poly* p, const Mat4& modelTransform, const Ma
 
 	normal = Vec4::Normalize3(normal * projection);
 	return normal[2] < 0;
+}
+
+bool CCGWorkView::IsSilhouetteEdge(const PolyEdge* e, const Mat4 & modelTransform, const Mat4 & normalTransform, const Mat4 & camTransform)
+{
+	if (e->Polys.size() != 2)
+		return false;
+
+	bool isPoly1BF = IsBackFace(e->Polys[0], modelTransform, normalTransform, camTransform);
+	bool isPoly2BF = IsBackFace(e->Polys[1], modelTransform, normalTransform, camTransform);
+	return (isPoly1BF ^ isPoly2BF);
 }
 
 BOOL CCGWorkView::OnEraseBkgnd(CDC* pDC) 
@@ -1059,10 +1110,6 @@ void CCGWorkView::OnDraw(CDC* pDC)
 						clipped1 /= clipped1[3];
 						clipped2 /= clipped2[3];
 
-						// Basic Z clipping
-						if (IsClippedZ(clipped1, clipped2))
-							continue;
-
 						// Transform from NDC to screen space
 						Vec4 pix1Vec(clipped1 * toView);
 						Vec4 pix2Vec(clipped2 * toView);
@@ -1078,9 +1125,11 @@ void CCGWorkView::OnDraw(CDC* pDC)
 
 						Vec4 normal1 = Scene::GetInstance().GetCalcNormalState() ?
 							p->Vertices[i]->CalcNormal : p->Vertices[i]->Normal;
+						normal1 *= normalSign;
 						Vec4 normal2 = Scene::GetInstance().GetCalcNormalState() ?
 							p->Vertices[(i + 1) % p->Vertices.size()]->CalcNormal :
 							p->Vertices[(i + 1) % p->Vertices.size()]->Normal;
+						normal2 *= normalSign;
 
 						// Save parameters in DVertex
 						dVertex1.Pixel = pix1;
@@ -1122,6 +1171,7 @@ void CCGWorkView::OnDraw(CDC* pDC)
 					Vec4 normal = Scene::GetInstance().GetCalcNormalState() ?
 						p->CalcNormal : p->Normal;
 					normal = normal * normalTransform * camTransform;
+					normal *= normalSign;
 
 					// Draw poly in wireframe mode or fill it, according to user selection
 					if (currentPolySelection == WIREFRAME)
@@ -1144,12 +1194,20 @@ void CCGWorkView::OnDraw(CDC* pDC)
 				{
 					DrawBoundingBox(pDCToUse, geo->BBox, transform, camTransform, projection, toView, color);
 				}
+
+				// Draw Silhouette Edges if needed
+				if (showSil)
+				{
+					DrawSilhouetteEdges(pDCToUse, geo, transform, normalTransform, camTransform, 
+						projection, toView, AL_YELLO_CREF);
+				}
 			}
+
 			// Reset mouseclicked flag
 			mouseClicked = false;
+
 			// Draw the selected polys in the end to make sure they are on top
 			DrawSelectedPolys(pDCToUse);
-			// Draw Siluohette if needed
 
 			// Draw Model Bounding Box if needed
 			if (Scene::GetInstance().GetBBoxState() && !showGeos)
@@ -1895,5 +1953,19 @@ void CCGWorkView::OnLightSetmaterial()
 void CCGWorkView::OnButtonBculling()
 {
 	isBFCulling = !isBFCulling;
+	Invalidate();
+}
+
+
+void CCGWorkView::OnButtonSil()
+{
+	showSil = !showSil;
+	Invalidate();
+}
+
+
+void CCGWorkView::OnButtonInverseN()
+{
+	normalSign = -1.0 * normalSign;
 	Invalidate();
 }
