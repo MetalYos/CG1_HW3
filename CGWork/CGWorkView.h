@@ -26,6 +26,7 @@
 #include "Vec4.h"
 #include "Geometry.h"
 #include "Material.h"
+#include "CExportDialog.h"
 
 struct DVertex
 {
@@ -143,6 +144,7 @@ private:
 	CSensitivityDialog m_sensitivityDialog;
 	CResolutionDialog m_resolutionDialog;
 	CMaterialDlg m_materialDialog;
+	CExportDialog m_exportDialog;
 
 // Overrides
 	// ClassWizard generated virtual function overrides

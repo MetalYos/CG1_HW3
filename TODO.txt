@@ -10,7 +10,6 @@ Todo List:
 
 ------------BEN-----------------------
 
-6. Save to file. by default size
 
 -----------------------DONE--------------------------------
 1. Solid fill rendering.
@@ -27,3 +26,4 @@ The edge struct should hold Vertex instead of CPoint.
 9. Backface culling.
 7. Normal inverse.
 10. Silhouette highlighting
+6. Save to file. by default size

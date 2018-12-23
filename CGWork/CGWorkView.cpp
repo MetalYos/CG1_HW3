@@ -944,8 +944,8 @@ Vec4 CCGWorkView::CalculateShading(LightParams* lights, Material* material, Vec4
 			double distance = Vec4::Distance3(pos, lightPos);
 			if (lights[i].Type != LIGHT_TYPE_DIRECTIONAL)
 			{
-				//diffuse /= distance;
-				//specular /= distance;
+				diffuse /= distance;
+				specular /= distance;
 			}
 
 			numEnabledLights++;
@@ -1880,7 +1880,33 @@ void CCGWorkView::OnUpdateRenderingSolidonscreen(CCmdUI *pCmdUI)
 
 void CCGWorkView::OnRenderingSolidtofile()
 {
-	currentPolySelection = SOLID_FILE;
+	if (m_exportDialog.DoModal() == IDOK) {
+		unsigned int width = m_exportDialog.GetWidth() == 0 ? (double)m_WindowWidth : m_exportDialog.GetWidth();
+		unsigned int height = m_exportDialog.GetHeight() == 0 ? (double)m_WindowHeight : m_exportDialog.GetHeight();
+		const char * filename = "exportedImage.png";
+
+
+		PngWrapper imgToSave(filename, width, height);
+		if (!imgToSave.InitWritePng()) return;
+
+		// Scale factors
+		double cx = (double)m_WindowWidth / (double)width;
+		double cy = (double)m_WindowHeight / (double)height;
+
+		for (int x = 0; x < width; x++) {
+			for (int y = 0; y < height; y++) {
+				// Calculate position in image
+				double v = x * cx;
+				double w = y * cy;
+
+				auto c = m_pDC->GetPixel((int)round(v), (int)round(w));
+				//cold blooded hack - maybe there is a better way to parse the color
+				imgToSave.SetValue(x, y, SET_RGB(GET_A(c), GET_B(c), GET_G(c)));
+			}
+		}
+	
+		imgToSave.WritePng();
+ 	}
 	Invalidate();
 }
 

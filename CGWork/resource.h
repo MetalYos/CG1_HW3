@@ -12,6 +12,7 @@
 #define IDD_SENS_DLG                    142
 #define IDD_RESOLUTION_DLG              143
 #define IDD_SENSITIVITY_DLG             145
+#define IDD_SAVE_IMAGE_DLG              148
 #define IDC_LIGHT_SPACE                 1010
 #define IDC_RADIO_LIGHT1                1017
 #define IDC_RADIO_LIGHT2                1018
@@ -54,12 +55,15 @@
 #define IDC_EDIT2                       1046
 #define IDC_EDIT_FOV                    1046
 #define IDC_MATERIAL_DIFFUSE_B          1046
+#define IDC_EXPORT_WIDTH                1046
 #define IDC_EDIT_FAR                    1047
 #define IDC_MATERIAL_SHININESS_G        1047
 #define IDC_MATERIAL_SHININESS_B        1048
 #define IDC_EDIT_TESS                   1056
 #define IDC_EDIT_ROT                    1057
 #define IDC_EDIT_TRANS                  1058
+#define IDC_HEIGHT                      1058
+#define IDC_EXPORT_HEIGHT               1058
 #define IDC_EDIT_SCALE                  1059
 #define ID_FILE_LOAD                    32771
 #define ID_VIEW_ORTHOGRAPHIC            32772
@@ -115,9 +119,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        148
+#define _APS_NEXT_RESOURCE_VALUE        150
 #define _APS_NEXT_COMMAND_VALUE         32837
-#define _APS_NEXT_CONTROL_VALUE         1058
+#define _APS_NEXT_CONTROL_VALUE         1059
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
