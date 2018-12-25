@@ -27,6 +27,7 @@
 #include "Geometry.h"
 #include "Material.h"
 #include "CExportDialog.h"
+#include "CDialogSilhouette.h"
 
 struct DVertex
 {
@@ -85,7 +86,11 @@ private:
 	bool isBBoxOn;
 	bool isCColorDialogOpen;
 	bool isBFCulling;
+
+	// Silhouette options
 	bool showSil;
+	int silThickness;
+	COLORREF silColor;
 	
 	// Mouse parameters
 	bool mouseClicked;
@@ -145,6 +150,7 @@ private:
 	CResolutionDialog m_resolutionDialog;
 	CMaterialDlg m_materialDialog;
 	CExportDialog m_exportDialog;
+	CDialogSilhouette m_silDialog;
 
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -259,6 +265,7 @@ public:
 	afx_msg void OnButtonBculling();
 	afx_msg void OnButtonSil();
 	afx_msg void OnButtonInverseN();
+	afx_msg void OnOptionsSilhouetteoptions();
 };
 
 #ifndef _DEBUG  // debug version in CGWorkView.cpp

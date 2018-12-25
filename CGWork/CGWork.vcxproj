@@ -162,6 +162,7 @@
   <ItemGroup>
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="CColorsDialog.cpp" />
+    <ClCompile Include="CDialogSilhouette.cpp" />
     <ClCompile Include="CExportDialog.cpp" />
     <ClCompile Include="CGWork.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Disabled</Optimization>
@@ -235,6 +236,7 @@
     <ClInclude Include="ALMath.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="CColorsDialog.h" />
+    <ClInclude Include="CDialogSilhouette.h" />
     <ClInclude Include="CExportDialog.h" />
     <ClInclude Include="CGWork.h" />
     <ClInclude Include="CGWorkDoc.h" />

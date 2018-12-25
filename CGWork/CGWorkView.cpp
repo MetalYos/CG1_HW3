@@ -110,6 +110,7 @@ BEGIN_MESSAGE_MAP(CCGWorkView, CView)
 	ON_COMMAND(ID_BUTTON_SIL, &CCGWorkView::OnButtonSil)
 //	ON_UPDATE_COMMAND_UI(ID_BUTTON_SIL, &CCGWorkView::OnUpdateButtonSil)
 ON_COMMAND(ID_BUTTON_INVERSE_N, &CCGWorkView::OnButtonInverseN)
+ON_COMMAND(ID_OPTIONS_SILHOUETTEOPTIONS, &CCGWorkView::OnOptionsSilhouetteoptions)
 END_MESSAGE_MAP()
 
 // A patch to fix GLaux disappearance from VS2005 to VS2008
@@ -167,6 +168,8 @@ CCGWorkView::CCGWorkView()
 	isModelLoaded = false;
 	isBFCulling = false;
 	showSil = false;
+	silThickness = 3;
+	silColor = AL_YELLO_CREF;
 	normalSign = 1.0;
 }
 
@@ -801,7 +804,7 @@ void CCGWorkView::DrawSilhouetteEdges(CDC * pDC, Geometry* geo, const Mat4 & mod
 			// Draw line
 			CPoint p1Pix((int)p1[0], (int)p1[1]);
 			CPoint p2Pix((int)p2[0], (int)p2[1]);
-			DrawLine(pDC, color, p1Pix, p2Pix, 2);
+			DrawLine(pDC, color, p1Pix, p2Pix, silThickness - 1); // converting thickness to be 0-2 from 1-3
 		}
 	}
 }
@@ -1178,8 +1181,6 @@ void CCGWorkView::OnDraw(CDC* pDC)
 						DrawPoly(pDCToUse, poly);
 					else if (currentPolySelection == SOLID_SCREEN)
 						ScanConvert(pDCToUse, poly, color, polyCenter, normal);
-					else
-						ScanConvert(pDCToUse, poly, color, polyCenter, normal);
 
 					// Draw poly normal if needed
 					if (Scene::GetInstance().ArePolyNormalsOn())
@@ -1199,7 +1200,7 @@ void CCGWorkView::OnDraw(CDC* pDC)
 				if (showSil)
 				{
 					DrawSilhouetteEdges(pDCToUse, geo, transform, normalTransform, camTransform, 
-						projection, toView, AL_YELLO_CREF);
+						projection, toView, silColor);
 				}
 			}
 
@@ -1994,4 +1995,19 @@ void CCGWorkView::OnButtonInverseN()
 {
 	normalSign = -1.0 * normalSign;
 	Invalidate();
+}
+
+
+void CCGWorkView::OnOptionsSilhouetteoptions()
+{
+	m_silDialog.Thickness = silThickness;
+	m_silDialog.Color = silColor;
+	INT_PTR result = m_silDialog.DoModal();
+
+	if (result == IDOK)
+	{
+		silThickness = m_silDialog.Thickness;
+		silColor = m_silDialog.Color;
+		Invalidate();
+	}
 }
