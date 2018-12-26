@@ -12,6 +12,7 @@ IMPLEMENT_DYNAMIC(CLightDialog, CDialog)
 
 CLightDialog::CLightDialog(CWnd* pParent /*=NULL*/)
 	: CDialog(CLightDialog::IDD, pParent)
+	, m_RadioAtt(0)
 {
     m_currentLightIdx = 0;
 }
@@ -48,18 +49,21 @@ void CLightDialog::DoDataExchange(CDataExchange* pDX)
 	//the following class members can't be updated directly through DDX
 	//using a helper variable for type-casting to solve the compilation error
 
-	int helper=m_lights[m_currentLightIdx].Enabled;
-	DDX_Check(pDX,IDC_LIGHT_ENABLED,helper);
+	int helper = m_lights[m_currentLightIdx].Enabled;
+	DDX_Check(pDX, IDC_LIGHT_ENABLED, helper);
 	m_lights[m_currentLightIdx].Enabled = (bool)helper;
 
 	helper = m_lights[m_currentLightIdx].Type;
-	DDX_CBIndex(pDX,IDC_LIGHT_TYPE,helper);
+	DDX_CBIndex(pDX, IDC_LIGHT_TYPE, helper);
 	m_lights[m_currentLightIdx].Type = (LightType)helper;
 
 	helper = m_lights[m_currentLightIdx].Space;
-	DDX_CBIndex(pDX,IDC_LIGHT_SPACE,helper);
+	DDX_CBIndex(pDX, IDC_LIGHT_SPACE, helper);
 	m_lights[m_currentLightIdx].Space = (LightSpace)helper;
 
+	m_RadioAtt = m_lights[m_currentLightIdx].Attenuation;
+	DDX_Radio(pDX, IDC_RADIO_ATT_NONE, m_RadioAtt);
+	m_lights[m_currentLightIdx].Attenuation = (LightAttenuation)m_RadioAtt;
 }
 
 

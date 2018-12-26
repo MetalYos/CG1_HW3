@@ -944,9 +944,14 @@ Vec4 CCGWorkView::CalculateShading(LightParams* lights, Material* material, Vec4
 			Vec4 specularCoeff = material->Ks * pow(max(Vec4::Dot3(R, camDir), 0.0), material->Specular);
 			specular += intensity * specularCoeff;
 
-			double distance = Vec4::Distance3(pos, lightPos);
 			if (lights[i].Type != LIGHT_TYPE_DIRECTIONAL)
 			{
+				double distance = Vec4::Distance3(pos, lightPos);
+				if (lights[i].Attenuation == LIGHT_ATTENUATION_NONE)
+					distance = 1.0;
+				if (lights[i].Attenuation == LIGHT_ATTENUATION_POWEROF2)
+					distance *= distance;
+
 				diffuse /= distance;
 				specular /= distance;
 			}
@@ -1467,6 +1472,7 @@ void CCGWorkView::OnUpdateAxisZ(CCmdUI* pCmdUI)
 void CCGWorkView::OnLightShadingFlat() 
 {
 	m_nLightShading = ID_LIGHT_SHADING_FLAT;
+	Invalidate();
 }
 
 void CCGWorkView::OnUpdateLightShadingFlat(CCmdUI* pCmdUI) 
@@ -1478,6 +1484,7 @@ void CCGWorkView::OnUpdateLightShadingFlat(CCmdUI* pCmdUI)
 void CCGWorkView::OnLightShadingGouraud() 
 {
 	m_nLightShading = ID_LIGHT_SHADING_GOURAUD;
+	Invalidate();
 }
 
 void CCGWorkView::OnUpdateLightShadingGouraud(CCmdUI* pCmdUI) 
@@ -1488,6 +1495,7 @@ void CCGWorkView::OnUpdateLightShadingGouraud(CCmdUI* pCmdUI)
 void CCGWorkView::OnLightShadingPhong()
 {
 	m_nLightShading = ID_LIGHT_SHADING_PHONG;
+	Invalidate();
 }
 
 
@@ -1522,7 +1530,7 @@ void CCGWorkView::OnLightConstants()
 void CCGWorkView::OnTimer(UINT_PTR nIDEvent)
 {
 	CView::OnTimer(nIDEvent);
-	if (nIDEvent == 1)
+	if (nIDEvent == 1 && m_colorDialog.IsDiscoMode)
 		Invalidate();
 }
 
@@ -1606,6 +1614,7 @@ void CCGWorkView::OnMouseMove(UINT nFlags, CPoint point)
 			else
 				camera->Scale(Mat4::Scale(x_trans, y_trans, z_trans), aroundEye);
 		}
+		Invalidate();
 	}
 
 	prevMousePos = point;
@@ -1684,6 +1693,7 @@ void CCGWorkView::OnNormalCalculated()
 		pMenu->CheckMenuItem(ID_NORMAL_CALCULATED, MF_CHECKED | MF_BYCOMMAND);
 		pMenu->CheckMenuItem(ID_NORMAL_FROMFILE, MF_UNCHECKED | MF_BYCOMMAND);
 	}
+	Invalidate();
 }
 
 void CCGWorkView::OnNormalFromfile()
@@ -1697,6 +1707,7 @@ void CCGWorkView::OnNormalFromfile()
 		pMenu->CheckMenuItem(ID_NORMAL_CALCULATED, MF_UNCHECKED | MF_BYCOMMAND);
 		pMenu->CheckMenuItem(ID_NORMAL_FROMFILE, MF_CHECKED | MF_BYCOMMAND);
 	}
+	Invalidate();
 }
 
 void CCGWorkView::OnButtonColors()
@@ -1850,6 +1861,7 @@ void CCGWorkView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		m_nLightShading = ID_LIGHT_SHADING_PHONG;
 
 	CView::OnKeyDown(nChar, nRepCnt, nFlags);
+	Invalidate();
 }
 
 
@@ -1881,9 +1893,13 @@ void CCGWorkView::OnUpdateRenderingSolidonscreen(CCmdUI *pCmdUI)
 
 void CCGWorkView::OnRenderingSolidtofile()
 {
+	// Set dialog size variables to be the screen size
+	m_exportDialog.SetWidth(m_WindowWidth);
+	m_exportDialog.SetHeight(m_WindowHeight);
+
 	if (m_exportDialog.DoModal() == IDOK) {
-		unsigned int width = m_exportDialog.GetWidth() == 0 ? (double)m_WindowWidth : m_exportDialog.GetWidth();
-		unsigned int height = m_exportDialog.GetHeight() == 0 ? (double)m_WindowHeight : m_exportDialog.GetHeight();
+		unsigned int width = m_exportDialog.GetWidth() == 0 ? (unsigned int)m_WindowWidth : m_exportDialog.GetWidth();
+		unsigned int height = m_exportDialog.GetHeight() == 0 ? (unsigned int)m_WindowHeight : m_exportDialog.GetHeight();
 		const char * filename = "exportedImage.png";
 
 
@@ -1908,7 +1924,7 @@ void CCGWorkView::OnRenderingSolidtofile()
 	
 		imgToSave.WritePng();
  	}
-	Invalidate();
+	//Invalidate();
 }
 
 

@@ -13,7 +13,6 @@
 #define IDD_RESOLUTION_DLG              143
 #define IDD_SENSITIVITY_DLG             145
 #define IDD_SAVE_IMAGE_DLG              148
-#define IDD_DIALOG1                     150
 #define IDD_DIALOG_SILHOUETTE           150
 #define IDC_LIGHT_SPACE                 1010
 #define IDC_RADIO_LIGHT1                1017
@@ -69,6 +68,10 @@
 #define IDC_EDIT_SCALE                  1059
 #define IDC_BUTTON_SIL_COLOR            1059
 #define IDC_EDIT_SIL_THICKNESS          1060
+#define IDC_RADIO_ATT_NONE              1061
+#define IDC_RADIO_ATT_LINEAR            1062
+#define IDC_RADIO_ATT_LINEAR2           1063
+#define IDC_RADIO_ATT_POW2              1063
 #define ID_FILE_LOAD                    32771
 #define ID_VIEW_ORTHOGRAPHIC            32772
 #define ID_VIEW_PERSPECTIVE             32773
@@ -124,9 +127,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        152
+#define _APS_NEXT_RESOURCE_VALUE        153
 #define _APS_NEXT_COMMAND_VALUE         32838
-#define _APS_NEXT_CONTROL_VALUE         1061
+#define _APS_NEXT_CONTROL_VALUE         1062
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

@@ -27,6 +27,13 @@ typedef  enum
     LIGHT_SPACE_LOCAL
 } LightSpace;
 
+typedef  enum
+{
+	LIGHT_ATTENUATION_NONE,
+	LIGHT_ATTENUATION_LINEAR,
+	LIGHT_ATTENUATION_POWEROF2
+} LightAttenuation;
+
 
 class LightParams
 {
@@ -37,6 +44,8 @@ public:
     LightType Type;
     //local or view space
     LightSpace Space;
+	// Attenuation type
+	LightAttenuation Attenuation;
 
     //color 0-255 RGB
     int ColorR;
@@ -55,6 +64,7 @@ public:
     
     LightParams():
 	Enabled(false), Type(LIGHT_TYPE_DIRECTIONAL), Space(LIGHT_SPACE_VIEW),
+	Attenuation(LIGHT_ATTENUATION_NONE),
 	ColorR(255), ColorG(255), ColorB(255), PosX(0), PosY(0), PosZ(0),
 	DirX(0), DirY(0), DirZ(0)
     {}
