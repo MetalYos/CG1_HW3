@@ -28,6 +28,7 @@
 #include "Material.h"
 #include "CExportDialog.h"
 #include "CDialogSilhouette.h"
+#include "PngWrapper.h"
 
 struct DVertex
 {
@@ -114,10 +115,15 @@ private:
 	enum PolyFillSelection
 	{
 		WIREFRAME,
-		SOLID_SCREEN,
-		SOLID_FILE
+		SOLID_SCREEN
 	};
 	PolyFillSelection currentPolySelection;
+
+	// Image saving parameters
+	bool saveToFile;
+	int imgWidth;
+	int imgHeight;
+	PngWrapper imgToSave;
 
 	// Quick hack
 	std::vector< std::vector<Edge> > selectedPolys;
@@ -253,7 +259,7 @@ public:
 	afx_msg void OnRenderingSolidonscreen();
 	afx_msg void OnUpdateRenderingSolidonscreen(CCmdUI *pCmdUI);
 	afx_msg void OnRenderingSolidtofile();
-	afx_msg void OnUpdateRenderingSolidtofile(CCmdUI *pCmdUI);
+//	afx_msg void OnUpdateRenderingSolidtofile(CCmdUI *pCmdUI);
 	afx_msg void OnBackgroundStretch();
 	afx_msg void OnUpdateBackgroundStretch(CCmdUI *pCmdUI);
 	afx_msg void OnBackgroundRepeat();
@@ -266,6 +272,7 @@ public:
 	afx_msg void OnButtonSil();
 	afx_msg void OnButtonInverseN();
 	afx_msg void OnOptionsSilhouetteoptions();
+	afx_msg void OnBackgroundClear();
 };
 
 #ifndef _DEBUG  // debug version in CGWorkView.cpp

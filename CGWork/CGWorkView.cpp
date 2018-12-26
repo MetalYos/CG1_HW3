@@ -97,7 +97,6 @@ BEGIN_MESSAGE_MAP(CCGWorkView, CView)
 	ON_COMMAND(ID_RENDERING_SOLIDONSCREEN, &CCGWorkView::OnRenderingSolidonscreen)
 	ON_UPDATE_COMMAND_UI(ID_RENDERING_SOLIDONSCREEN, &CCGWorkView::OnUpdateRenderingSolidonscreen)
 	ON_COMMAND(ID_RENDERING_SOLIDTOFILE, &CCGWorkView::OnRenderingSolidtofile)
-	ON_UPDATE_COMMAND_UI(ID_RENDERING_SOLIDTOFILE, &CCGWorkView::OnUpdateRenderingSolidtofile)
 	ON_COMMAND(ID_BACKGROUND_STRETCH, &CCGWorkView::OnBackgroundStretch)
 	ON_UPDATE_COMMAND_UI(ID_BACKGROUND_STRETCH, &CCGWorkView::OnUpdateBackgroundStretch)
 	ON_COMMAND(ID_BACKGROUND_REPEAT, &CCGWorkView::OnBackgroundRepeat)
@@ -108,9 +107,9 @@ BEGIN_MESSAGE_MAP(CCGWorkView, CView)
 	ON_UPDATE_COMMAND_UI(ID_LIGHT_SHADING_PHONG, &CCGWorkView::OnUpdateLightShadingPhong)
 	ON_COMMAND(ID_BUTTON_BCULLING, &CCGWorkView::OnButtonBculling)
 	ON_COMMAND(ID_BUTTON_SIL, &CCGWorkView::OnButtonSil)
-//	ON_UPDATE_COMMAND_UI(ID_BUTTON_SIL, &CCGWorkView::OnUpdateButtonSil)
-ON_COMMAND(ID_BUTTON_INVERSE_N, &CCGWorkView::OnButtonInverseN)
-ON_COMMAND(ID_OPTIONS_SILHOUETTEOPTIONS, &CCGWorkView::OnOptionsSilhouetteoptions)
+	ON_COMMAND(ID_BUTTON_INVERSE_N, &CCGWorkView::OnButtonInverseN)
+	ON_COMMAND(ID_OPTIONS_SILHOUETTEOPTIONS, &CCGWorkView::OnOptionsSilhouetteoptions)
+	ON_COMMAND(ID_BACKGROUND_CLEAR, &CCGWorkView::OnBackgroundClear)
 END_MESSAGE_MAP()
 
 // A patch to fix GLaux disappearance from VS2005 to VS2008
@@ -143,9 +142,9 @@ CCGWorkView::CCGWorkView()
 
 	//init the first light to be enabled
 	m_lights[LIGHT_ID_1].Enabled = true;
-	m_lights[LIGHT_ID_1].DirX = 1.0;
-	m_lights[LIGHT_ID_1].DirY = 1.0;
-	m_lights[LIGHT_ID_1].DirZ = 1.0;
+	m_lights[LIGHT_ID_1].DirX = -1.0;
+	m_lights[LIGHT_ID_1].DirY = -1.0;
+	m_lights[LIGHT_ID_1].DirZ = -1.0;
 	m_pDbBitMap = NULL;
 	m_pDbDC = NULL;
 
@@ -171,6 +170,8 @@ CCGWorkView::CCGWorkView()
 	silThickness = 3;
 	silColor = AL_YELLO_CREF;
 	normalSign = 1.0;
+
+	saveToFile = false;
 }
 
 CCGWorkView::~CCGWorkView()
@@ -480,10 +481,15 @@ void CCGWorkView::ScanConvert(CDC* pDc, std::vector<Edge> poly, COLORREF color, 
 				}
 				// Compare z Pos to zBuffer, if z Pos > zBuffer,
 				// Draw and update z buffer
-				int index = min(x + m_WindowWidth * y, m_WindowWidth * m_WindowHeight - 1);
+				int width = saveToFile ? imgWidth : m_WindowWidth;
+				int height = saveToFile ? imgHeight : m_WindowHeight;
+				int index = min(x + width * y, width * height - 1);
 				if (zp > zBuffer[index])
 				{
-					pDc->SetPixel(x, y, color);
+					if (!saveToFile)
+						pDc->SetPixel(x, y, color);
+					else
+						imgToSave.SetValue(x, y, SET_RGB(GET_A(color), GET_B(color), GET_G(color)));
 					zBuffer[index] = zp;
 				}
 				x++;
@@ -537,7 +543,10 @@ void CCGWorkView::DrawPointOctant(CDC * pDC, int x, int y, COLORREF color, const
 	CPoint actualPoint = origA + transformed;
 
 	if (thickness == 0)
-		pDC->SetPixel(actualPoint, color);
+		if(!saveToFile)
+			pDC->SetPixel(actualPoint, color);
+		else
+			imgToSave.SetValue(actualPoint.x, actualPoint.y, SET_RGB(GET_A(color), GET_B(color), GET_G(color)));
 	else
 	{
 		// Draw thickness
@@ -564,7 +573,10 @@ void CCGWorkView::DrawPointOctant(CDC * pDC, int x, int y, COLORREF color, const
 			{
 				pix.x = x;
 				pix.y = y;
-				pDC->SetPixel(pix, color);
+				if (!saveToFile)
+					pDC->SetPixel(pix, color);
+				else
+					imgToSave.SetValue(x, y, SET_RGB(GET_A(color), GET_B(color), GET_G(color)));
 			}
 		}
 	}
@@ -737,19 +749,22 @@ void CCGWorkView::DrawPolyNormal(CDC * pDC, const Poly * p, const Mat4 & modelTr
 
 void CCGWorkView::DrawBackground(CDC* pDC, CRect r)
 {
-	if (currentPolySelection != WIREFRAME && isBGFileOpen) {
+	if (((currentPolySelection != WIREFRAME) || saveToFile) && isBGFileOpen) {
 
 		CT2A BG(BGFile);
 		PngWrapper pngReadFile(BG);
 		pngReadFile.ReadPng();
 
+		int width = saveToFile ? imgWidth : m_WindowWidth;
+		int height = saveToFile ? imgHeight : m_WindowHeight;
+
 		if (isBGStretch) {
 			// Scale factors
-			double cx = (double)m_WindowWidth / (double)pngReadFile.GetWidth();
-			double cy = (double)m_WindowHeight / (double)pngReadFile.GetHeight();
+			double cx = (double)width / (double)pngReadFile.GetWidth();
+			double cy = (double)height / (double)pngReadFile.GetHeight();
 
-			for (int x = 0; x < m_WindowWidth; x++) {
-				for (int y = 0; y < m_WindowHeight; y++) {
+			for (int x = 0; x < width; x++) {
+				for (int y = 0; y < height; y++) {
 					// Calculate position in image
 					double v = x / cx;
 					double w = y / cy;
@@ -759,27 +774,39 @@ void CCGWorkView::DrawBackground(CDC* pDC, CRect r)
 					int r = GET_R(c);
 					int g = GET_G(c);
 					int b = GET_B(c);
-					pDC->SetPixel(x, y, RGB(r, g, b));
+					if (!saveToFile)
+						pDC->SetPixel(x, y, RGB(r, g, b));
+					else
+						imgToSave.SetValue(x, y, SET_RGB(GET_A(RGB(r, g, b)), GET_B(RGB(r, g, b)), GET_G(RGB(r, g, b))));
 				}
 			}
 		}
 		else {
-			for (int x = 0; x < m_WindowWidth; x++) {
-				for (int y = 0; y < m_WindowHeight; y++) {
-					//TODO check for grayscale
+			for (int x = 0; x < width; x++) {
+				for (int y = 0; y < height; y++) {
 					int c = pngReadFile.GetValue(x % pngReadFile.GetWidth(), y % pngReadFile.GetHeight());
 					int r = GET_R(c);
 					int g = GET_G(c);
 					int b = GET_B(c);
 
-					pDC->SetPixel(x, y, RGB(r, g, b));
+					if (!saveToFile)
+						pDC->SetPixel(x, y, RGB(r, g, b));
+					else
+						imgToSave.SetValue(x, y, SET_RGB(GET_A(RGB(r, g, b)), GET_B(RGB(r, g, b)), GET_G(RGB(r, g, b))));
 				}
 			}
 		}
 	}
 	else {
 		COLORREF bGColorRef = m_colorDialog.BackgroundColor;
-		pDC->FillSolidRect(&r, bGColorRef);
+		if (!saveToFile)
+			pDC->FillSolidRect(&r, bGColorRef);
+		else
+		{
+			for (int x = 0; x < imgWidth; x++)
+				for (int y = 0; y < imgHeight; y++)
+					imgToSave.SetValue(x, y, SET_RGB(GET_A(bGColorRef), GET_B(bGColorRef), GET_G(bGColorRef)));
+		}
 	}
 }
 
@@ -914,15 +941,22 @@ Vec4 CCGWorkView::CalculateShading(LightParams* lights, Material* material, Vec4
 				Mat4 camTransform = Scene::GetInstance().GetCamera()->GetTranform();
 
 				lightPos = lightPos * camTransform;
+
+				camTransform[3][0] = 0.0;
+				camTransform[3][1] = 0.0;
+				camTransform[3][2] = 0.0;
 				direction = direction * camTransform;
 			}
+			if (lights[i].Type == LIGHT_TYPE_POINT)
+				direction = pos - lightPos;
+
+			direction = -direction;
 
 			Vec4 intensity(lights[i].ColorR, lights[i].ColorG, lights[i].ColorB);
 			intensity /= 255.0;	// So intensity will be between 0.0 - 1.0
 
 			// normalize everything
-			direction = (lights[i].Type == LIGHT_TYPE_DIRECTIONAL) ? Vec4::Normalize3(direction) :
-				Vec4::Normalize3(pos - lightPos);
+			direction = Vec4::Normalize3(direction);
 			normal = Vec4::Normalize3(normal);
 
 			Vec4 camPos(0.0);
@@ -1059,7 +1093,7 @@ void CCGWorkView::OnDraw(CDC* pDC)
 	}
 
 	// Initialize zBuffer
-	int bufferSize = m_WindowWidth * m_WindowHeight;
+	int bufferSize = (saveToFile) ? (imgWidth * imgHeight) : (m_WindowWidth * m_WindowHeight);
 	zBuffer = new double[bufferSize];
 	for (int i = 0; i < bufferSize; i++)
 		zBuffer[i] = -DBL_MAX;
@@ -1078,6 +1112,26 @@ void CCGWorkView::OnDraw(CDC* pDC)
 			Vec4(0.0, m_WindowHeight / 2.0, 0.0, 0.0),
 			Vec4(0.0, 0.0, 1.0, 0.0),
 			Vec4((m_WindowWidth - 1) / 2.0, (m_WindowHeight - 1) / 2.0, 0.0, 1.0));
+
+		PerspectiveParams pParams = camera->GetPerspectiveParameters();
+		OrthographicParams oParams = camera->GetOrthographicParameters();
+		if (saveToFile)
+		{
+			double imgAspectRatio = (double)imgWidth / (double)imgHeight;
+			if (m_bIsPerspective)
+				camera->SetPerspective2(pParams.FOV, imgAspectRatio, pParams.Near, pParams.Far);
+			else
+			{
+				double width = orthoHeight * imgAspectRatio;
+				camera->SetOrthographic(orthoHeight, imgAspectRatio, oParams.Near, oParams.Far);
+			}
+
+			projection = camera->GetProjection();
+			toView = Mat4(Vec4(imgWidth / 2.0, 0.0, 0.0, 0.0),
+				Vec4(0.0, imgHeight / 2.0, 0.0, 0.0),
+				Vec4(0.0, 0.0, 1.0, 0.0),
+				Vec4((imgWidth - 1) / 2.0, (imgHeight - 1) / 2.0, 0.0, 1.0));
+		}
 
 		for (Model* model : models)
 		{
@@ -1182,9 +1236,9 @@ void CCGWorkView::OnDraw(CDC* pDC)
 					normal *= normalSign;
 
 					// Draw poly in wireframe mode or fill it, according to user selection
-					if (currentPolySelection == WIREFRAME)
+					if (currentPolySelection == WIREFRAME && !saveToFile)
 						DrawPoly(pDCToUse, poly);
-					else if (currentPolySelection == SOLID_SCREEN)
+					else if (currentPolySelection == SOLID_SCREEN || saveToFile)
 						ScanConvert(pDCToUse, poly, color, polyCenter, normal);
 
 					// Draw poly normal if needed
@@ -1219,6 +1273,22 @@ void CCGWorkView::OnDraw(CDC* pDC)
 			if (Scene::GetInstance().GetBBoxState() && !showGeos)
 			{
 				DrawBoundingBox(pDCToUse, model->GetBBox(), transform, camTransform, projection, toView, color);
+			}
+		}
+
+		if (saveToFile)
+		{
+			imgToSave.WritePng();
+			AfxMessageBox(L"Rendered to file successfully", MB_OK | MB_ICONINFORMATION);
+			saveToFile = false;
+
+			// Restore original projection
+			if (m_bIsPerspective)
+				camera->SetPerspective2(pParams.FOV, m_AspectRatio, pParams.Near, pParams.Far);
+			else
+			{
+				double width = orthoHeight * m_AspectRatio;
+				camera->SetOrthographic(orthoHeight, m_AspectRatio, oParams.Near, oParams.Far);
 			}
 		}
 	}
@@ -1894,43 +1964,25 @@ void CCGWorkView::OnUpdateRenderingSolidonscreen(CCmdUI *pCmdUI)
 void CCGWorkView::OnRenderingSolidtofile()
 {
 	// Set dialog size variables to be the screen size
-	m_exportDialog.SetWidth(m_WindowWidth);
-	m_exportDialog.SetHeight(m_WindowHeight);
+	if ((m_exportDialog.GetWidth() == 0) || (m_exportDialog.GetHeight() == 0))
+	{
+		m_exportDialog.SetWidth(m_WindowWidth);
+		m_exportDialog.SetHeight(m_WindowHeight);
+	}
 
 	if (m_exportDialog.DoModal() == IDOK) {
-		unsigned int width = m_exportDialog.GetWidth() == 0 ? (unsigned int)m_WindowWidth : m_exportDialog.GetWidth();
-		unsigned int height = m_exportDialog.GetHeight() == 0 ? (unsigned int)m_WindowHeight : m_exportDialog.GetHeight();
-		const char * filename = "exportedImage.png";
+		imgWidth = m_exportDialog.GetWidth();
+		imgHeight = m_exportDialog.GetHeight();
+		CT2A filename(m_exportDialog.GetFileName());
 
-
-		PngWrapper imgToSave(filename, width, height);
+		imgToSave.SetWidth(imgWidth);
+		imgToSave.SetHeight(imgHeight);
+		imgToSave.SetFileName(filename);
 		if (!imgToSave.InitWritePng()) return;
 
-		// Scale factors
-		double cx = (double)m_WindowWidth / (double)width;
-		double cy = (double)m_WindowHeight / (double)height;
-
-		for (int x = 0; x < width; x++) {
-			for (int y = 0; y < height; y++) {
-				// Calculate position in image
-				double v = x * cx;
-				double w = y * cy;
-
-				auto c = m_pDC->GetPixel((int)round(v), (int)round(w));
-				//cold blooded hack - maybe there is a better way to parse the color
-				imgToSave.SetValue(x, y, SET_RGB(GET_A(c), GET_B(c), GET_G(c)));
-			}
-		}
-	
-		imgToSave.WritePng();
+		saveToFile = true;
+		Invalidate();
  	}
-	//Invalidate();
-}
-
-
-void CCGWorkView::OnUpdateRenderingSolidtofile(CCmdUI *pCmdUI)
-{
-	pCmdUI->SetCheck(currentPolySelection == SOLID_FILE);
 }
 
 
@@ -2026,4 +2078,11 @@ void CCGWorkView::OnOptionsSilhouetteoptions()
 		silColor = m_silDialog.Color;
 		Invalidate();
 	}
+}
+
+
+void CCGWorkView::OnBackgroundClear()
+{
+	isBGFileOpen = false;
+	Invalidate();
 }

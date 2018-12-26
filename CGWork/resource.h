@@ -2,6 +2,7 @@
 // Microsoft Visual C++ generated include file.
 // Used by CGWork.rc
 //
+#define ID_BUTTON_BROWSE                3
 #define IDD_ABOUTBOX                    100
 #define IDR_MAINFRAME                   128
 #define IDR_CGWorkTYPE                  129
@@ -70,7 +71,6 @@
 #define IDC_EDIT_SIL_THICKNESS          1060
 #define IDC_RADIO_ATT_NONE              1061
 #define IDC_RADIO_ATT_LINEAR            1062
-#define IDC_RADIO_ATT_LINEAR2           1063
 #define IDC_RADIO_ATT_POW2              1063
 #define ID_FILE_LOAD                    32771
 #define ID_VIEW_ORTHOGRAPHIC            32772
@@ -122,13 +122,14 @@
 #define ID_BACKGROUND_REPEAT            32835
 #define ID_LIGHT_SETMATERIAL            32836
 #define ID_OPTIONS_SILHOUETTEOPTIONS    32837
+#define ID_BACKGROUND_CLEAR             32838
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        153
-#define _APS_NEXT_COMMAND_VALUE         32838
+#define _APS_NEXT_COMMAND_VALUE         32839
 #define _APS_NEXT_CONTROL_VALUE         1062
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
