@@ -683,22 +683,18 @@ void CCGWorkView::DrawBoundingBox(CDC * pDC, const std::vector<Poly*>& polys, co
 	}
 }
 
-void CCGWorkView::DrawVertexNormal(CDC * pDC, const Vertex * v, const Mat4 & modelTransform,
-	const Mat4 & normalTransform, const Mat4 & camTransform, const Mat4 & projection, 
+void CCGWorkView::DrawVertexNormal(CDC* pDC, const Vertex* v, const Vec4& normal,
+	const Mat4 & modelTransform, const Mat4 & camTransform, const Mat4 & projection,
 	const Mat4 & toView, COLORREF color)
 {
 	// Transform vertex position to view space
 	Vec4 startPos = v->Pos * modelTransform * camTransform;
-	
-	// Transform normal to view space
-	Vec4 normal = Scene::GetInstance().GetCalcNormalState() ?
-		v->CalcNormal : v->Normal;
-	normal *= normalSign;
-	normal = normal * normalTransform * camTransform;
-	normal = Vec4::Normalize3(normal);
+
+	// Normalize normal
+	Vec4 norm = Vec4::Normalize3(normal);
 
 	// Calculate endPos
-	Vec4 endPos = startPos + normal * normalSizeFactor;
+	Vec4 endPos = startPos + norm * normalSizeFactor;
 
 	// Transform Start and End Pos to screen space
 	startPos = startPos * projection;
@@ -1040,6 +1036,31 @@ bool CCGWorkView::IsSilhouetteEdge(const PolyEdge* e, const Mat4 & modelTransfor
 	return (isPoly1BF ^ isPoly2BF);
 }
 
+Vec4 CCGWorkView::CalculateVertexNormal(const Vertex * v, const Mat4 & modelTransform, const Mat4& normalTransform, const Mat4 & camTransform)
+{
+	Vec4 normal;
+	for (Poly* p : v->Polys)
+	{
+		if (p->Vertices.size() > 3)
+		{
+			Vec4 u = p->Vertices[0]->Pos * modelTransform * camTransform;
+			Vec4 v = p->Vertices[1]->Pos * modelTransform * camTransform;
+			Vec4 w = p->Vertices[2]->Pos * modelTransform * camTransform;
+
+			Vec4 norm = Vec4::Cross(u - v, v - w);
+			normal += Vec4::Normalize3(norm);
+		}
+		else
+			normal += p->Normal * normalTransform * camTransform;
+	}
+
+	normal /= v->Polys.size();
+	normal = Vec4::Normalize3(normal);
+	normal[3] = 0.0;
+
+	return normal;
+}
+
 BOOL CCGWorkView::OnEraseBkgnd(CDC* pDC) 
 {
 	// Windows will clear the window with the background color every time your window 
@@ -1063,7 +1084,6 @@ BOOL CCGWorkView::OnEraseBkgnd(CDC* pDC)
 
 void CCGWorkView::OnDraw(CDC* pDC)
 {
-	static float theta = 0.0f;
 	CCGWorkDoc* pDoc = GetDocument();
 	ASSERT_VALID(pDoc);
 	if (!pDoc)
@@ -1185,26 +1205,29 @@ void CCGWorkView::OnDraw(CDC* pDC)
 						// Initialize vertex for drawing
 						DVertex dVertex1, dVertex2;
 
-						Vec4 normal1 = Scene::GetInstance().GetCalcNormalState() ?
-							p->Vertices[i]->CalcNormal : p->Vertices[i]->Normal;
-						normal1 *= normalSign;
-						Vec4 normal2 = Scene::GetInstance().GetCalcNormalState() ?
-							p->Vertices[(i + 1) % p->Vertices.size()]->CalcNormal :
-							p->Vertices[(i + 1) % p->Vertices.size()]->Normal;
-						normal2 *= normalSign;
+						// Get vertex normal from file and transform it to view space
+						// Or calculate it and get it already in view space
+						Vec4 normal1VS = Scene::GetInstance().GetCalcNormalState() ?
+							CalculateVertexNormal(p->Vertices[i], transform, normalTransform, camTransform) :
+							p->Vertices[i]->Normal * normalTransform * camTransform;;
+						normal1VS *= normalSign;
+						Vec4 normal2VS = Scene::GetInstance().GetCalcNormalState() ?
+							CalculateVertexNormal(p->Vertices[(i + 1) % p->Vertices.size()], transform, normalTransform, camTransform) :
+							p->Vertices[(i + 1) % p->Vertices.size()]->Normal * normalTransform * camTransform;;
+						normal2VS *= normalSign;
 
 						// Save parameters in DVertex
 						dVertex1.Pixel = pix1;
 						dVertex1.PosVS = pos1 * transform * camTransform;
 						dVertex1.Z = clipped1[2];
-						dVertex1.NormalVS = normal1 * transform * camTransform;
+						dVertex1.NormalVS = normal1VS * transform * camTransform;
 						// Calculate color
 						dVertex1.Color = CalculateShading(m_lights, model->GetMaterial(), dVertex1.PosVS, dVertex1.NormalVS, color) * 255.0;
 
 						dVertex2.Pixel = pix2;
 						dVertex2.PosVS = pos2 * transform * camTransform;
 						dVertex2.Z = clipped2[2];
-						dVertex2.NormalVS = normal2 * transform * camTransform;
+						dVertex2.NormalVS = normal2VS * transform * camTransform;
 						// Calculate color
 						dVertex2.Color = CalculateShading(m_lights, model->GetMaterial(), dVertex2.PosVS, dVertex2.NormalVS, color) * 255.0;
 
@@ -1216,7 +1239,7 @@ void CCGWorkView::OnDraw(CDC* pDC)
 						// Draw vertex normal if needed
 						if (Scene::GetInstance().AreVertexNormalsOn())
 						{
-							DrawVertexNormal(pDCToUse, p->Vertices[i], transform, normalTransform,
+							DrawVertexNormal(pDCToUse, p->Vertices[i], normal1VS, transform,
 								camTransform, projection, toView, normalColor);
 						}
 					}

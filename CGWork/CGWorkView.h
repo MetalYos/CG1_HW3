@@ -138,8 +138,8 @@ private:
 	void DrawSelectedPolys(CDC* pDC);
 	void DrawBoundingBox(CDC* pDC, const std::vector<Poly*>& polys, const Mat4& modelTransform,
 		const Mat4& camTransform, const Mat4& projection, const Mat4& toView, COLORREF color);
-	void DrawVertexNormal(CDC* pDC, const Vertex* v, const Mat4& modelTransform, 
-		const Mat4 & normalTransform, const Mat4& camTransform, const Mat4& projection, 
+	void DrawVertexNormal(CDC* pDC, const Vertex* v, const Vec4& normal,
+		const Mat4& modelTransform, const Mat4& camTransform, const Mat4& projection,
 		const Mat4& toView, COLORREF color);
 	void DrawPolyNormal(CDC* pDC, const Poly* p, const Mat4& modelTransform,
 		const Mat4 & normalTransform, const Mat4& camTransform, const Mat4& projection,
@@ -186,6 +186,7 @@ protected:
 	Vec4 CalculateShading(LightParams* lights, Material* material, Vec4 pos, Vec4 normal, COLORREF color);
 	bool IsBackFace(const Poly* p, const Mat4& modelTransform, const Mat4& normalTransform, const Mat4& camTransform);
 	bool IsSilhouetteEdge(const PolyEdge* e, const Mat4& modelTransform, const Mat4& normalTransform, const Mat4& camTransform);
+	Vec4 CalculateVertexNormal(const Vertex* v, const Mat4& modelTransform, const Mat4& normalTransform, const Mat4& camTransform);
 	virtual void RenderScene();
 
 
