@@ -74,25 +74,25 @@ void CMaterialDlg::DoDataExchange(CDataExchange* pDX)
 {
     CDialog::DoDataExchange(pDX);
     DDX_Text(pDX, IDC_MATERIAL_AMBIENT_R, m_ambient_r);
-    DDV_MinMaxDouble(pDX, m_ambient_r, 0, 1);
+    DDV_MinMaxDouble(pDX, m_ambient_r, 0.0, 1.0);
 	DDX_Text(pDX, IDC_MATERIAL_AMBIENT_G, m_ambient_g);
-	DDV_MinMaxDouble(pDX, m_ambient_g, 0, 1);
+	DDV_MinMaxDouble(pDX, m_ambient_g, 0.0, 1.0);
 	DDX_Text(pDX, IDC_MATERIAL_AMBIENT_B, m_ambient_b);
-	DDV_MinMaxDouble(pDX, m_ambient_b, 0, 1);
+	DDV_MinMaxDouble(pDX, m_ambient_b, 0.0, 1.0);
 
     DDX_Text(pDX, IDC_MATERIAL_DIFFUSE_R, m_diffuse_r);
-    DDV_MinMaxDouble(pDX, m_diffuse_r, 0, 1);
+    DDV_MinMaxDouble(pDX, m_diffuse_r, 0.0, 1.0);
 	DDX_Text(pDX, IDC_MATERIAL_DIFFUSE_G, m_diffuse_g);
-	DDV_MinMaxDouble(pDX, m_diffuse_g, 0, 1);
+	DDV_MinMaxDouble(pDX, m_diffuse_g, 0.0, 1.0);
 	DDX_Text(pDX, IDC_MATERIAL_DIFFUSE_B, m_diffuse_b);
-	DDV_MinMaxDouble(pDX, m_diffuse_b, 0, 1);
+	DDV_MinMaxDouble(pDX, m_diffuse_b, 0.0, 1.0);
 
     DDX_Text(pDX, IDC_MATERIAL_SHININESS_R, m_shininess_r);
-    DDV_MinMaxDouble(pDX, m_shininess_r, 0, 1);
-	DDX_Text(pDX, IDC_MATERIAL_SHININESS_G, m_shininess_r);
-	DDV_MinMaxDouble(pDX, m_shininess_g, 0, 1);
-	DDX_Text(pDX, IDC_MATERIAL_SHININESS_B, m_shininess_r);
-	DDV_MinMaxDouble(pDX, m_shininess_b, 0, 1);
+    DDV_MinMaxDouble(pDX, m_shininess_r, 0.0, 1.0);
+	DDX_Text(pDX, IDC_MATERIAL_SHININESS_G, m_shininess_g);
+	DDV_MinMaxDouble(pDX, m_shininess_g, 0.0, 1.0);
+	DDX_Text(pDX, IDC_MATERIAL_SHININESS_B, m_shininess_b);
+	DDV_MinMaxDouble(pDX, m_shininess_b, 0.0, 1.0);
 
     DDX_Text(pDX, IDC_MATERIAL_SPECULAR, m_specular);
 	DDV_MinMaxDouble(pDX, m_specular, 0, 1024);
