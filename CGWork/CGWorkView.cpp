@@ -1220,14 +1220,14 @@ void CCGWorkView::OnDraw(CDC* pDC)
 						dVertex1.Pixel = pix1;
 						dVertex1.PosVS = pos1 * transform * camTransform;
 						dVertex1.Z = clipped1[2];
-						dVertex1.NormalVS = normal1VS * transform * camTransform;
+						dVertex1.NormalVS = normal1VS;
 						// Calculate color
 						dVertex1.Color = CalculateShading(m_lights, model->GetMaterial(), dVertex1.PosVS, dVertex1.NormalVS, color) * 255.0;
 
 						dVertex2.Pixel = pix2;
 						dVertex2.PosVS = pos2 * transform * camTransform;
 						dVertex2.Z = clipped2[2];
-						dVertex2.NormalVS = normal2VS * transform * camTransform;
+						dVertex2.NormalVS = normal2VS;
 						// Calculate color
 						dVertex2.Color = CalculateShading(m_lights, model->GetMaterial(), dVertex2.PosVS, dVertex2.NormalVS, color) * 255.0;
 
