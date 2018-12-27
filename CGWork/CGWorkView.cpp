@@ -142,9 +142,9 @@ CCGWorkView::CCGWorkView()
 
 	//init the first light to be enabled
 	m_lights[LIGHT_ID_1].Enabled = true;
-	m_lights[LIGHT_ID_1].DirX = -1.0;
-	m_lights[LIGHT_ID_1].DirY = -1.0;
-	m_lights[LIGHT_ID_1].DirZ = -1.0;
+	m_lights[LIGHT_ID_1].DirX = 1.0;
+	m_lights[LIGHT_ID_1].DirY = 1.0;
+	m_lights[LIGHT_ID_1].DirZ = 1.0;
 	m_pDbBitMap = NULL;
 	m_pDbDC = NULL;
 
@@ -949,8 +949,6 @@ Vec4 CCGWorkView::CalculateShading(LightParams* lights, Material* material, Vec4
 			}
 			if (lights[i].Type == LIGHT_TYPE_POINT)
 				direction = pos - lightPos;
-
-			direction = -direction;
 
 			Vec4 intensity(lights[i].ColorR, lights[i].ColorG, lights[i].ColorB);
 			intensity /= 255.0;	// So intensity will be between 0.0 - 1.0
